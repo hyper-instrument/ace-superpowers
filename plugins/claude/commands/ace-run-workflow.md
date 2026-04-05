@@ -11,14 +11,31 @@ This command invokes the `ace-run-workflow` skill from ace-superpowers.
 
 ## ACE CLI Commands (Recommended)
 
-### List Devices
+### List Local Devices
 ```bash
-ace device list
+ace device list              # local only (default)
+ace device list --source all # include hub-synced
 ```
 
 ### List Workflows
 ```bash
-ace workflow list
+ace workflow list              # local only (default)
+ace workflow list --source all # include hub-synced
+```
+
+### Pull from ace-hub (if not found locally)
+```bash
+ace hub list --type devices    # see available devices
+ace hub pull <device_id> --type device
+
+ace hub list --type workflows  # see available workflows
+ace hub pull <workflow_id> --type workflow
+
+ace hub list --type nodes      # see available nodes
+ace hub pull <node_id> --type node
+
+ace hub list --type simulators # see available simulators
+ace hub pull <sim_id> --type simulator
 ```
 
 ### Run a Workflow

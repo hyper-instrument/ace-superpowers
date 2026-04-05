@@ -12,7 +12,23 @@ Inspired by superpowers philosophy: clarify → design (2-3 options) → verify 
 - User brings new instrument/device manuals
 - User provides SDK/API with examples
 - Need to create Device + Simulator definitions
-- No existing abstraction for target device
+- No existing abstraction for target device (check `ace hub list --type devices` first)
+
+## Before Onboarding: Check ace-hub
+
+**Always check ace-hub first before creating new device:**
+
+1. **List available devices in hub:**
+   ```bash
+   ace hub list --type devices
+   ```
+
+2. **Pull existing device if available:**
+   ```bash
+   ace hub pull <device_id> --type device
+   ```
+
+3. **Only onboard if device doesn't exist in hub or locally**
 
 ## Workflow (Superpowers-Inspired + Evolution)
 

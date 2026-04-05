@@ -12,7 +12,7 @@ Inspired by superpowers philosophy: design → verify → evolve.
 - User wants to **build** workflows or nodes
 - User wants to **run** workflows on existing devices
 - User wants to **compose** nodes into pipelines
-- Device definitions already exist in ~/.ace/store/devices/
+- Device definitions already exist in ~/.ace/store/devices/ (or can be pulled from ace-hub)
 
 ## Workflow (Superpowers-Inspired)
 
@@ -36,9 +36,11 @@ If user wants to **run a workflow**:
    - Show input/output schema
    - Ask: "Is this the workflow you want to run?"
 
-3. **If NO match** → Switch to Build mode
-   - "No matching workflow found. Let's build one."
-   - Go to Phase 3: Build
+3. **If NO match** → Check ace-hub or Build
+   - "No matching workflow found locally."
+   - Suggest: `ace hub list --type workflows` to see available workflows
+   - Suggest: `ace hub pull <workflow_id> --type workflow` to pull from hub
+   - If user wants new workflow: Go to Phase 3: Build
 
 ### Phase 3: Build (Workflow or Node)
 
@@ -54,8 +56,11 @@ If building a **workflow**:
    - List required node types
    - Check if each exists in ~/.ace/store/nodes/
 
-3. **If missing nodes** → Trigger Node Build
-   - "Workflow needs nodes that don't exist yet. Let's build them first."
+3. **If missing nodes** → Check ace-hub or Build
+   - "Workflow needs nodes that don't exist locally."
+   - Suggest: `ace hub list --type nodes` to see available nodes
+   - Suggest: `ace hub pull <node_id> --type node` to pull from hub
+   - If node not in hub: "Let's build the missing nodes first."
    - Go to Phase 4: Build Node
 
 4. **Compose & Validate**

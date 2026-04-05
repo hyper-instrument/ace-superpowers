@@ -13,7 +13,14 @@ This command invokes the `ace-development` skill from ace-superpowers.
 
 ### List Nodes
 ```bash
-ace node list [--device <device_id>]
+ace node list --source local              # local only (default)
+ace node list --source all [--device <device_id>]
+```
+
+### Pull from ace-hub (if nodes not found)
+```bash
+ace hub list --type nodes
+ace hub pull <node_id> --type node
 ```
 
 ### Show Node Details
