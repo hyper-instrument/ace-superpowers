@@ -304,6 +304,10 @@ def format_memory_message(entity_type: str, context: dict, memory_data: dict) ->
 
 def main():
     """Main entry point - reads PostToolUse data from stdin."""
+    # Ensure ACE_ROOT is in path for src imports
+    if ACE_ROOT:
+        sys.path.insert(0, ACE_ROOT)
+
     try:
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, EOFError):
