@@ -16,44 +16,61 @@ Improve ACE framework using official superpowers skills, with ACE evolution闭�
 
 ## Workflow
 
-### Phase 1: Design (Superpowers)
+### Phase 1: Clarify
 
-1. **Invoke superpowers:brainstorming**
-   - Explore project context (ACE codebase)
-   - Ask clarifying questions
-   - Propose 2-3 approaches
-   - Present design sections
-   - Get user approval
-   - Write spec to docs/superpowers/specs/YYYY-MM-DD-<feature>-design.md
+Understand development goals:
+1. What part of ACE framework to improve?
+2. What are the constraints and success criteria?
+3. Any breaking changes to consider?
 
-2. **Invoke superpowers:writing-plans**
-   - Create implementation plan
-   - Bite-sized tasks (2-5 min each)
-   - Exact file paths, complete code, test commands
-   - Save to docs/superpowers/plans/YYYY-MM-DD-<feature>-plan.md
+### Phase 2: Design (Superpowers)
 
-### Phase 2: Execute (Superpowers)
+**Invoke superpowers:brainstorming**
+- Explore project context (ACE codebase)
+- Ask clarifying questions
+- Propose 2-3 approaches
+- Present design sections
+- Get user approval
+- Write spec to `docs/superpowers/specs/YYYY-MM-DD-<feature>-design.md`
 
-3. **Invoke superpowers:executing-plans OR superpowers:subagent-driven-development**
-   - Execute tasks from plan
-   - Follow exact steps
-   - Run verifications
-   - Frequent commits
+### Phase 3: Plan (Superpowers)
 
-### Phase 3: Evolution闭环 (ACE)
+**Invoke superpowers:writing-plans**
+- Create implementation plan
+- Bite-sized tasks (2-5 min each)
+- Exact file paths, complete code, test commands
+- Save to `docs/superpowers/plans/YYYY-MM-DD-<feature>-plan.md`
 
-4. **ACE Evolution Integration**
-   - Execution produces traces at ~/.ace/traces/
-   - Run pattern extraction: /ace-evolve
-   - Create/update insights from development traces
-   - If patterns detected → promote to L2 insights
-   - Update CLAUDE.md if principles emerge
+### Phase 4: Execute (Superpowers)
 
-5. **Complete (Superpowers)**
-   - Invoke superpowers:finishing-a-development-branch
-   - Verify tests pass
-   - Present merge options
-   - Execute user choice
+**Invoke superpowers:executing-plans OR superpowers:subagent-driven-development**
+- Execute tasks from plan
+- Follow exact steps
+- Run verifications
+- Frequent commits
+
+### Phase 5: Verify (Superpowers)
+
+**Invoke superpowers:verification-before-completion**
+- Run all tests
+- Verify implementation matches spec
+- Confirm no regressions
+
+### Phase 6: Evolution闭环 (ACE)
+
+**ACE Evolution Integration**
+- Execution produces traces at `~/.ace/traces/`
+- Run: `ace evolve`
+- Create/update insights from development traces
+- If patterns detected → promote to L2 insights
+- Update CLAUDE.md if principles emerge
+
+### Phase 7: Complete (Superpowers)
+
+**Invoke superpowers:finishing-a-development-branch**
+- Verify tests pass
+- Present merge options
+- Execute user choice
 
 ## Output Paths
 
@@ -61,12 +78,14 @@ Improve ACE framework using official superpowers skills, with ACE evolution闭�
 - Plans: docs/superpowers/plans/YYYY-MM-DD-<feature>-plan.md
 - Traces: ~/.ace/traces/ (auto-generated)
 - Insights: ~/.ace/insights/ (auto-generated)
+- Evolution: Run `ace evolve` after completion to extract patterns
 
 ## Key Principles
 
 - Superpowers for development rigor (TDD, systematic, verifiable)
 - ACE evolution for learning from development traces
 - Both frameworks complement each other
+- Run `ace evolve` after development to extract patterns from traces
 
 ## Canonical Statements
 
@@ -74,3 +93,4 @@ Improve ACE framework using official superpowers skills, with ACE evolution闭�
 - "Design phase: invoking superpowers:brainstorming..."
 - "Execution phase: invoking superpowers:executing-plans..."
 - "Evolution phase: extracting patterns from development traces..."
+- "Evolution phase: running ace evolve to extract patterns..."
