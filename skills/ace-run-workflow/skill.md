@@ -184,3 +184,132 @@ ace hub push <node-id> --type node
 **4. Update insights (if patterns detected):**
 - Promote to `~/.ace/insights/workflow-<id>*.md`
 - Update fitness scores
+
+## Memory Management
+
+Memory is automatically synced between local store and ace-hub:
+
+| Memory Type | Local Path | Hub Path | Sync Command |
+|------------|------------|----------|--------------|
+| Workflow Memory | `~/.ace/store/workflows/<id>/memory/` | `ace-hub/workflows/<id>/memory/` | `ace hub pull/push` |
+| Node Memory | `~/.ace/store/nodes/<id>/memory/` | `ace-hub/nodes/<id>/memory/` | `ace hub pull/push` |
+| Device Memory | `~/.ace/store/devices/<id>/memory/` | `ace-hub/devices/<id>/memory/` | `ace hub pull/push` |
+
+**Memory folder contents:**
+- `execution_history.json` - Past executions with params and results
+- `best_params.json` - Optimized parameter combinations
+- `common_failures.md` - Known issues and solutions
+- `optimization_tips.md` - Performance recommendations
+
+## Interaction Flow Examples
+
+### Example 1: Run Workflow (Match Found)
+
+```
+User: /ace run workflow for image acquisition
+
+Agent: → Searching ace-hub and local store...
+```bash
+ace hub list --type workflows
+ace workflow list
+```
+→ Found 2 workflows:
+  1. fibsem_acquire_dual_beam - Dual beam image acquisition
+  2. tem_high_throughput - TEM high throughput imaging
+
+→ Pulling workflow memory from hub...
+```bash
+ace hub pull fibsem_acquire_dual_beam --type workflow
+```
+
+→ Is #1 what you need? (Y/n/details)
+
+User: Y
+
+Agent: → Executing via CLI for reproducibility...
+```bash
+ace run workflow fibsem_acquire_dual_beam
+```
+→ Execution complete. Traces captured.
+→ Running ace evolve to extract patterns...
+```
+
+### Example 2: Run Workflow (No Match → Build)
+
+```
+User: /ace run workflow for my custom experiment
+
+Agent: → No matching workflow found locally or on ace-hub.
+→ Let's build one. What device are you using?
+
+[Build workflow flow...]
+
+Agent: → Building workflow...
+```bash
+ace workflow build --description "custom experiment" --device <device-id>
+```
+
+→ Workflow built. Now executing via CLI...
+```bash
+ace run workflow <new-workflow-id>
+```
+```
+
+### Example 3: Run Workflow (Missing Nodes)
+
+```
+User: /ace build workflow for STM scanning
+
+Agent: → Design: STM raster scan with grid resolution
+→ Required nodes:
+  ✓ stm_connect (exists)
+  ✓ stm_set_bias (exists)
+  ✗ stm_custom_scan (missing)
+
+→ Node stm_custom_scan doesn't exist. Building it now...
+```bash
+ace node build --device stm --description "custom scan pattern"
+```
+
+→ Node built. Pushing to hub...
+```bash
+ace hub push stm_custom_scan --type node
+```
+
+→ Continuing workflow composition...
+```bash
+ace workflow create --nodes "stm_connect,stm_set_bias,stm_custom_scan"
+ace run workflow <workflow-id>
+```
+```
+
+## Reproducibility Guarantee
+
+**Why CLI execution is required:**
+
+1. **Recorded Execution**: `ace run workflow` saves full context to `~/.ace/store/run/workflow/<id>/`
+2. **Version Control**: Execution params, ace version, timestamp all recorded
+3. **Reproducible**: Same command produces same results (deterministic workflows)
+4. **Traceable**: Every execution captured in traces for analysis
+
+**Never do this:**
+```python
+# BAD - Direct API call, not reproducible
+result = workflow_engine.execute(workflow_def)
+```
+
+**Always do this:**
+```bash
+# GOOD - CLI execution, fully reproducible
+ace run workflow <workflow-id> --params '<json>'
+```
+
+## Canonical Statements
+
+- "Let me search ace-hub and local store for matching workflows..."
+- "Pulling workflow memory from ace-hub..."
+- "Is this the workflow you want to run?"
+- "Missing nodes detected. Building them with ace node build..."
+- "Executing workflow via CLI for reproducibility: ace run workflow <id>..."
+- "Running ace evolve to extract patterns..."
+- "Pushing execution memory to ace-hub: ace hub push <id> --type workflow --commit"
