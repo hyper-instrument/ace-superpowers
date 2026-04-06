@@ -4,6 +4,7 @@ description: ACE Paradigm 2 - Onboard new devices and simulators
 # ACE P2 - Device Onboarding
 
 Transform device manuals and SDKs into ACE-orchestratable assets.
+TDD required: Write test → Build node → Verify test passes → Validate with simple workflow
 
 ## Usage
 
@@ -51,8 +52,13 @@ ace hub pull [devices|workflows|nodes|all]
 1. Clarify intent (one question at a time)
 2. Design (propose 2-3 onboarding approaches)
 3. Knowledge ingestion (manuals → knowledge base)
-4. Device + Simulator implementation
-5. Distill operations (create initial nodes)
+4. **Execute with TDD**
+   - RED: Write failing test for node
+   - GREEN: Build node to pass test
+   - REFACTOR: Clean up while tests green
+5. **Verify with two-layer validation**
+   - Layer 1: Node unit tests
+   - Layer 2: Simple workflow end-to-end test
 6. Evolution闭环
 
 ## Invocation

@@ -41,10 +41,43 @@ Understand development goals:
 - Exact file paths, complete code, test commands
 - Save to `docs/superpowers/plans/YYYY-MM-DD-<feature>-plan.md`
 
-### Phase 4: Execute (Superpowers)
+### Phase 4: Execute with TDD (Superpowers)
 
-**Invoke superpowers:executing-plans OR superpowers:subagent-driven-development**
-- Execute tasks from plan
+**CRITICAL: Invoke superpowers:test-driven-development FIRST**
+
+Follow the RED-GREEN-REFACTOR cycle for all code changes:
+
+**RED - Write Failing Test**
+- Write test showing desired behavior BEFORE any implementation
+- Test one behavior at a time with clear names
+- Run test to confirm it fails for expected reason
+
+**Verify RED**
+```bash
+# Run test to confirm it fails
+ace sandbox test <test_pattern>
+# Must see expected failure message
+```
+
+**GREEN - Minimal Implementation**
+- Write simplest code to pass the test
+- No extra features, no premature abstraction
+- Focus only on making the test pass
+
+**Verify GREEN**
+```bash
+# Run test to confirm it passes
+ace sandbox test <test_pattern>
+# Must pass with all green
+```
+
+**REFACTOR - Clean Up**
+- Remove duplication while tests stay green
+- Improve names and structure
+- Run tests after each change
+
+**Then: superpowers:executing-plans OR superpowers:subagent-driven-development**
+- Execute remaining tasks from plan
 - Follow exact steps
 - Run verifications
 - Frequent commits
@@ -82,7 +115,13 @@ Understand development goals:
 
 ## Key Principles
 
-- Superpowers for development rigor (TDD, systematic, verifiable)
+**From Superpowers:**
+- **TDD is mandatory**: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+- Write test → watch it fail → write minimal code → watch it pass → refactor
+- Delete any code written before tests. Start fresh with TDD.
+- Systematic, verifiable development
+
+**From ACE:**
 - ACE evolution for learning from development traces
 - Both frameworks complement each other
 - Run `ace evolve` after development to extract patterns from traces
@@ -91,6 +130,19 @@ Understand development goals:
 
 - "Developing ACE framework using superpowers with evolution闭环..."
 - "Design phase: invoking superpowers:brainstorming..."
+- "TDD phase: invoking superpowers:test-driven-development..."
+- "RED: Writing failing test first..."
+- "GREEN: Writing minimal code to pass..."
+- "REFACTOR: Cleaning up while tests stay green..."
 - "Execution phase: invoking superpowers:executing-plans..."
 - "Evolution phase: extracting patterns from development traces..."
 - "Evolution phase: running ace evolve to extract patterns..."
+
+## TDD Red Flags - STOP and Delete Code
+
+- Code written before test → Delete and start over with TDD
+- Test passes immediately → Fix test, it must fail first
+- "I'll test after" → No. Write test NOW
+- "This is too simple to test" → Simple code breaks. Test it.
+- "Deleting code is wasteful" → Sunk cost fallacy. Delete and TDD.
+- "TDD is dogmatic" → TDD IS pragmatic. Follow it.

@@ -60,7 +60,10 @@ ace sandbox test [test_pattern]
 
 1. Design (`superpowers:brainstorming`)
 2. Plan (`superpowers:writing-plans`)
-3. Execute (`superpowers:executing-plans`)
+3. **Develop with TDD** (`superpowers:test-driven-development`)
+   - RED: Write failing test first
+   - GREEN: Write minimal code to pass
+   - REFACTOR: Clean up while green
 4. Evolution闭环 (`/ace-evolve`)
 5. Complete (`superpowers:finishing-a-development-branch`)
 

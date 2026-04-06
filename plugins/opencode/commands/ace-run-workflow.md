@@ -5,9 +5,26 @@ description: ACE Paradigm 1 - Build and run workflows/nodes
 
 Build, compose, and execute workflows using existing device abstractions.
 
+**Note:**
+- `run workflow`: Direct execution, no TDD needed
+- `build node`: Test-first - write test, build node, verify test passes
+
 ## Usage
 
 This command invokes the `ace-run-workflow` skill from ace-superpowers.
+
+## Test-First Node Building
+
+```bash
+# Step 1: Write test for the node
+ace node test --create <node-id>_test.py --description "operation"
+
+# Step 2: Build the node
+ace node build --device <device-id> --description "operation"
+
+# Step 3: Run test to verify
+ace sandbox test <node-id>_test.py
+```
 
 ## ACE CLI Commands (Recommended)
 
@@ -45,7 +62,7 @@ ace workflow validate <workflow_id>
 
 1. Clarify intent (build new? run existing? modify?)
 2. For "run": search → confirm with user → execute
-3. For "build": design → check nodes → compose → validate
+3. For "build": design → check nodes → **test-first for new nodes** → compose → validate
 4. Execute with traces
 5. Evolution闭环
 

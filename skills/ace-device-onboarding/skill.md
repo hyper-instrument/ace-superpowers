@@ -21,6 +21,9 @@ Transform device manuals and SDKs into ACE-orchestratable assets with ace-hub sh
 - Design alternatives (propose 2-3 approaches)
 - Verify at each milestone
 - No speculative work
+- **TDD is mandatory**: NO NODE/SIMULATOR CODE WITHOUT FAILING TEST FIRST
+- Write test → watch it fail → write minimal code → watch it pass
+- Validate with: node test + simple workflow end-to-end test
 
 **From ACE:**
 - Accumulate: Onboarding process → traces
@@ -90,53 +93,121 @@ Create detailed onboarding plan with:
 ace knowledge ingest <manual.pdf> --tags device:<device-id>
 ```
 
-### Phase 4: Execute
+### Phase 4: Execute with TDD
 
-Execute CLI commands to create artifacts:
+**CRITICAL: Apply TDD to all code artifacts**
+
+**TDD Iron Law: NO NODE/SIMULATOR CODE WITHOUT FAILING TEST FIRST**
 
 **1. Create Device Definition:**
 ```bash
 ace device create <device-id> --from-spec device_spec.json
 ```
 
-**2. Build Atomic Nodes:**
+**2. Build Atomic Nodes (TDD for each):**
+
+For each atomic operation - TDD cycle:
+
+**RED - Write Failing Test:**
 ```bash
-# For each atomic operation
-ace node build --device <device-id> --description "connect to device"
-ace node build --device <device-id> --description "set parameter X"
-# ... etc
+# Create test FIRST - node doesn't exist yet
+ace node test --create <node-id>_test.py --description "connect to device"
+# Verify test FAILS (expected - node not implemented)
+ace sandbox test <node-id>_test.py
 ```
 
-**3. Create Simulator (if applicable):**
+**GREEN - Build Node to Pass Test:**
+```bash
+# Build node to make test pass
+ace node build --device <device-id> --description "connect to device"
+# Verify test PASSES
+ace sandbox test <node-id>_test.py
+```
+
+**REFACTOR - Clean Up:**
+```bash
+# Improve node while test stays green
+ace node validate <node-id>
+ace sandbox test <node-id>_test.py  # Must still pass
+```
+
+**Repeat for each node:**
+```bash
+# RED
+ace node test --create <node-id>_test.py --description "set parameter X"
+ace sandbox test <node-id>_test.py  # Must fail
+
+# GREEN
+ace node build --device <device-id> --description "set parameter X"
+ace sandbox test <node-id>_test.py  # Must pass
+```
+
+**3. Create Simulator (if applicable, TDD):**
+
+**RED:**
+```bash
+ace simulator test --create <device-id>_sim_test.py
+ace sandbox test <device-id>_sim_test.py  # Must fail
+```
+
+**GREEN:**
 ```bash
 ace simulator create <device-id> [--type <sim-type>]
+ace sandbox test <device-id>_sim_test.py  # Must pass
 ```
 
-**4. Create Initial Workflows:**
+**4. Create Test Workflow (TDD):**
+
+**RED - Create failing test workflow:**
 ```bash
-ace workflow create --device <device-id> --name "basic_operation"
+# Create test workflow (will fail since nodes might not be fully integrated)
+ace workflow create --device <device-id> --name "test_<device-id>" --nodes "<node1>,<node2>,..."
+ace run workflow test_<device-id> --dry-run  # Should fail or show issues
 ```
+
+**GREEN - Fix nodes until workflow passes:**
+```bash
+# Iterate on nodes until test workflow passes
+ace run workflow test_<device-id>  # Must pass end-to-end
+```
+
+**TDD Iron Law: NO NODE/SIMULATOR CODE WITHOUT FAILING TEST FIRST**
 
 ### Phase 5: Verify
 
 **Invoke superpowers:verification-before-completion**
 
-Validate all artifacts:
+**Two-layer validation: Node tests + End-to-end workflow test**
 
+**Layer 1: Validate individual artifacts:**
 ```bash
 # Validate device
 ace device validate <device-id>
 
-# Validate nodes
+# Validate nodes (unit test level)
 ace node validate <node-id-1>
+ace sandbox test <node-id-1>_test.py
+
 ace node validate <node-id-2>
+ace sandbox test <node-id-2>_test.py
 # ... etc
 
 # Test simulator
 ace simulator test <device-id>
+```
 
-# Dry-run workflow
-ace run workflow <workflow-id> --dry-run
+**Layer 2: Validate with simple test workflow (end-to-end):**
+```bash
+# Create minimal test workflow chaining all nodes
+ace workflow create --device <device-id> --name "test_<device-id>" --nodes "<node1>,<node2>,..."
+
+# Dry-run first
+ace run workflow test_<device-id> --dry-run
+
+# Full test workflow execution
+ace run workflow test_<device-id>
+
+# All nodes must pass both unit test AND workflow integration test
 ```
 
 ### Phase 6: Evolution & Sharing
@@ -221,8 +292,18 @@ Let me create a detailed onboarding plan and ingest the manual..."
 - "Before onboarding, let me check ace-hub for similar devices..."
 - "Proposing 3 onboarding approaches (Full Sim / HITL / Hybrid)..."
 - "Ingesting manuals: ace knowledge ingest..."
-- "Creating device: ace device create <id>..."
-- "Building atomic nodes with ace node build..."
-- "Validating with ace device validate and ace node validate..."
+- "TDD: NO NODE CODE WITHOUT FAILING TEST FIRST"
+- "RED: Writing failing test for node..."
+- "GREEN: Building node to pass test..."
+- "REFACTOR: Cleaning up while tests green..."
+- "Validating: node unit test + simple workflow end-to-end test"
 - "Running ace evolve to extract patterns..."
 - "Pushing to ace-hub: ace hub push <id> --type device --commit"
+
+## TDD Red Flags - STOP and Delete
+
+- Node code written before test → Delete and start over with TDD
+- Test passes immediately → Fix test, must fail first
+- "Simulator too simple to test" → Test it anyway
+- "I'll add tests after onboarding" → No. Test-first NOW
+- "Node passes unit test but fails workflow" → Fix node until both pass

@@ -22,6 +22,7 @@ Inspired by superpowers philosophy: design → verify → evolve → share.
 - Confirm before executing (is this what you want?)
 - Verify at each step (type checking, validation)
 - Iterate on failure (don't just fail, fix)
+- **TDD for node building**: When creating new nodes, write test first, then build node to pass test
 
 **From ACE:**
 - Accumulate: Every execution → traces
@@ -92,17 +93,16 @@ ace workflow list --device <device-id>
 **If "build workflow":**
 - List required node types
 - Check node availability: `ace node list`
-- If missing nodes → plan node building first
+- If missing nodes → plan node building first with TDD
 
 **If "build node":**
 - Plan node structure
-- Prepare test strategy
+- **Prepare TDD test strategy** - Write test BEFORE code
+- Define expected input/output for tests
 
 ### Phase 4: Execute
 
-**CRITICAL: Use CLI for reproducibility**
-
-**If "run workflow":**
+**If "run workflow" (NO TDD needed - just run):**
 ```bash
 # MUST use CLI for reproducibility
 ace run workflow <workflow-id> [--params '<json>']
@@ -111,24 +111,51 @@ ace run workflow <workflow-id> [--params '<json>']
 ace run workflow fibsem_acquire_dual_beam --params '{"resolution": "1024x768"}'
 ```
 
+**If "build node" (TDD REQUIRED):**
+
+**RED - Write Failing Test:**
+```bash
+# Create test FIRST - node doesn't exist yet
+ace node test --create <node-id>_test.py --description "<operation description>"
+# Verify test FAILS (expected - node not implemented)
+ace sandbox test <node-id>_test.py
+```
+
+**GREEN - Build Node to Pass Test:**
+```bash
+# Build node to make test pass
+ace node build --device <device-id> --description "<operation description>"
+# Verify test PASSES
+ace sandbox test <node-id>_test.py
+```
+
+**REFACTOR - Clean Up:**
+```bash
+# Improve node while test stays green
+ace node validate <node-id>
+ace sandbox test <node-id>_test.py  # Must still pass
+```
+
 **If "build workflow":**
 ```bash
-# Create workflow
+# First: Build any missing nodes with TDD (see above)
+# Then: Create workflow from nodes
 ace workflow create --name <name> --device <device-id> --nodes '<node-list>'
 
 # Or build from natural language
 ace workflow build --description "acquire dual beam images" --device fibsem
 ```
 
-**If "build node":**
+**If missing nodes detected (TDD for each):**
 ```bash
-ace node build --device <device-id> --description "<operation description>"
-```
+# RED: Write failing test for missing node
+ace node test --create <missing-node>_test.py --description "custom scan pattern"
+ace sandbox test <missing-node>_test.py  # Must fail
 
-**If missing nodes detected:**
-```bash
-# Build missing nodes first
+# GREEN: Build node to pass test
 ace node build --device <device-id> --description "custom scan pattern"
+ace sandbox test <missing-node>_test.py  # Must pass
+
 # Then retry workflow
 ace run workflow <workflow-id>
 ```
@@ -309,7 +336,16 @@ ace run workflow <workflow-id> --params '<json>'
 - "Let me search ace-hub and local store for matching workflows..."
 - "Pulling workflow memory from ace-hub..."
 - "Is this the workflow you want to run?"
-- "Missing nodes detected. Building them with ace node build..."
+- "Missing nodes detected. Building with TDD..."
+- "TDD: Writing failing test for node..."
+- "TDD: Building node to pass test..."
 - "Executing workflow via CLI for reproducibility: ace run workflow <id>..."
 - "Running ace evolve to extract patterns..."
 - "Pushing execution memory to ace-hub: ace hub push <id> --type workflow --commit"
+
+## TDD Red Flags - STOP and Delete
+
+- Node code written before test → Delete and start over
+- Test passes immediately → Fix test, must fail first
+- "Node is too simple to test" → Test it anyway
+- "I'll add tests after building workflow" → No. Test-first NOW
