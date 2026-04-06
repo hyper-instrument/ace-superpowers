@@ -69,15 +69,203 @@ Get user approval before proceeding.
    - Map public APIs to operations
    - Identify state machine requirements
 
-2. **Device Definition**
-   - Create ~/.ace/store/devices/<device-id>/device.json
-   - Define capabilities, parameters, constraints
+2. **Device Definition (device.json)**
 
-3. **Simulator Implementation** (if applicable)
-   - Implement Simulator class extending BaseSimulator
-   - Map APIs to deterministic operations
-   - Add fault injection support
-   - Create state machine
+   Create `~/.ace/store/devices/<device-type>/<implementation>/device.json`:
+
+   **Simulator-only Device**:
+   ```json
+   {
+     "name": "xxx/simulator",
+     "type": "XXX",
+     "vendor": "Vendor",
+     "model": "Model",
+     "description": "XXX simulator",
+     "capabilities": ["op1", "op2"],
+     "parameters": {
+       "param1": {"type": "number", "default": 1.0}
+     },
+     "has_simulator": true,
+     "simulator_id": "xxx-simulator",
+     "simulator": {
+       "source": "local",
+       "config": {
+         "simulator_id": "xxx-simulator",
+         "speed_multiplier": 10.0
+       }
+     },
+     "metadata": {
+       "simulator_class": "XXXSimulator",
+       "sdk_install": {
+         "method": "pip",
+         "package": "git+ssh://git@github.com/user/repo.git"
+       }
+     }
+   }
+   ```
+
+   **Device with Hardware Backend + Simulator**:
+   ```json
+   {
+     "name": "xxx/vendor",
+     "type": "XXX",
+     "vendor": "Vendor",
+     "model": "Model",
+     "description": "XXX instrument",
+     "capabilities": ["op1", "op2"],
+     "parameters": {
+       "param1": {"type": "number", "default": 1.0}
+     },
+     "has_simulator": true,
+     "simulator_id": "xxx-simulator",
+     "backend": {
+       "source": "local",
+       "config": {
+         "host": "127.0.0.1",
+         "port": 8080,
+         "timeout": 10.0
+       }
+     },
+     "simulator": {
+       "source": "local",
+       "config": {
+         "simulator_id": "xxx-simulator",
+         "speed_multiplier": 10.0
+       }
+     },
+     "metadata": {
+       "sdk": "package-name"
+     }
+   }
+   ```
+
+   **Key Fields**:
+   - `source: "local"` - Loads implementation from local device.py
+   - `config` - Passed to device class constructor
+   - `metadata.sdk_install.package` - Git URL for SDK installation
+   - `metadata.sdk` - PyPI package name (alternative to sdk_install)
+
+3. **Device Implementation (device.py)**
+
+   Create `~/.ace/store/devices/<device-type>/<implementation>/device.py` following the standard paradigm:
+
+   **Simulator Device** (`simulator/device.py`):
+   ```python
+   """XXX Simulator Implementation"""
+   import asyncio
+   import logging
+   from typing import Any, Dict
+
+   import sys
+   import os
+   from pathlib import Path
+   ace_root = os.environ.get("ACE_ROOT", str(Path(__file__).parent.parent.parent.parent.parent.parent.parent))
+   sys.path.insert(0, str(ace_root))
+
+   from src.core.simulator.base import SimulatorDevice, OperationResult
+
+   logger = logging.getLogger(__name__)
+
+
+   class XXXSimulator(SimulatorDevice):
+       """XXX Simulator"""
+
+       @property
+       def vendor(self) -> str:
+           return "Vendor"
+
+       @property
+       def model(self) -> str:
+           return "Model"
+
+       @property
+       def capabilities(self) -> list:
+           return ["op1", "op2"]
+
+       async def execute_operation(self, operation: str, params: Dict[str, Any]) -> OperationResult:
+           """Execute device operation"""
+           handler = getattr(self, f"_op_{operation}", None)
+           if handler is None:
+               return OperationResult(success=False, error=f"Unknown operation: {operation}")
+
+           try:
+               result = await handler(params)
+               return OperationResult(success=True, output=result)
+           except Exception as e:
+               logger.exception("Operation failed: %s", operation)
+               return OperationResult(success=False, error=str(e))
+
+       async def _op_example(self, params: Dict[str, Any]) -> Dict[str, Any]:
+           """Example operation handler"""
+           return {"result": "success"}
+   ```
+
+   **Hardware Device Backend** (`<vendor>/device.py`):
+   ```python
+   """XXX Device Backend"""
+   import asyncio
+   import logging
+   from typing import Any, Dict, Optional
+
+   import sys
+   import os
+   from pathlib import Path
+   ace_root = os.environ.get("ACE_ROOT", str(Path(__file__).parent.parent.parent.parent.parent.parent.parent))
+   sys.path.insert(0, str(ace_root))
+
+   from src.core.devices.backend import BaseDeviceBackend
+
+   logger = logging.getLogger(__name__)
+
+
+   class XXXDevice(BaseDeviceBackend):
+       """XXX Hardware Backend"""
+
+       def __init__(self, device_info: Any, host: str = "127.0.0.1", port: int = 8080, timeout: float = 10.0):
+           super().__init__(device_info)
+           self.host = host
+           self.port = port
+           self.timeout = timeout
+           self._connected = False
+
+       async def connect(self) -> bool:
+           """Connect to hardware"""
+           try:
+               # Implementation
+               self._connected = True
+               return True
+           except Exception as e:
+               logger.error("Failed to connect: %s", e)
+               return False
+
+       def disconnect(self) -> None:
+           """Disconnect from hardware"""
+           self._connected = False
+
+       def is_connected(self) -> bool:
+           return self._connected
+
+       async def execute_operation(self, operation: str, params: Dict[str, Any]) -> Dict[str, Any]:
+           """Execute device operation"""
+           if not self._connected:
+               ok = await self.connect()
+               if not ok:
+                   return {"success": False, "error": "Not connected"}
+
+           handler = getattr(self, f"_op_{operation}", None)
+           if handler is None:
+               return {"success": False, "error": f"Unknown operation: {operation}"}
+
+           try:
+               return await handler(params)
+           except Exception as e:
+               logger.exception("Operation failed: %s", operation)
+               return {"success": False, "error": str(e)}
+
+       async def _op_example(self, params: Dict[str, Any]) -> Dict[str, Any]:
+           """Example operation handler"""
+           return {"success": True, "result": "success"}
+   ```
 
 4. **SKILL.md Creation**
    - Document capabilities
@@ -143,9 +331,9 @@ Get user approval before proceeding.
 
 | Artifact | Location | Purpose |
 |----------|----------|---------|
-| Device definition | ~/.ace/store/devices/<id>/device.json | Capability contract |
-| Simulator | src/core/simulator/<device>.py or ~/.ace/store/ | Testing & validation |
-| SKILL.md | ~/.ace/store/devices/<id>/SKILL.md | Operation catalog |
+| Device definition | ~/.ace/store/devices/<type>/<impl>/device.json | Capability contract |
+| Device implementation | ~/.ace/store/devices/<type>/<impl>/device.py | Python implementation (follows standard paradigm) |
+| SKILL.md | ~/.ace/store/devices/<type>/<impl>/SKILL.md | Operation catalog |
 | Knowledge entries | ~/.ace/knowledge/ | Searchable manual content |
 | Initial nodes | ~/.ace/store/nodes/atomic/<device>_*/ | Reusable operations |
 | Traces | ~/.ace/traces/ | Onboarding process record |
