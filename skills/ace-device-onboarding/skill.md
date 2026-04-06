@@ -159,3 +159,70 @@ ace hub push <workflow-id> --type workflow --commit
 ```
 
 **3. Document in CLAUDE.md (if universal patterns emerge)**
+
+## Deliverables
+
+| Artifact | Location | Hub Path | Purpose |
+|----------|----------|----------|---------|
+| Device definition | `~/.ace/store/devices/<id>/` | `ace-hub/devices/<id>/` | Capability contract |
+| SKILL.md | `~/.ace/store/devices/<id>/SKILL.md` | `ace-hub/devices/<id>/SKILL.md` | API documentation |
+| Simulator | `src/core/simulator/<id>.py` or `~/.ace/store/simulators/` | `ace-hub/simulators/<id>/` | Testing & validation |
+| Atomic nodes | `~/.ace/store/nodes/atomic/<id>_*/` | `ace-hub/nodes/<id>_*/` | Reusable operations |
+| Workflows | `~/.ace/store/workflows/<id>.json` | `ace-hub/workflows/<id>/` | Ready-to-run workflows |
+| Memory | `~/.ace/store/devices/<id>/memory/` | `ace-hub/devices/<id>/memory/` | Device-specific data |
+| Insights | `~/.ace/insights/device-<id>*.md` | - | Patterns for future |
+
+## Interaction Flow Example
+
+**User:** "I need to onboard a new TEM instrument."
+
+**Agent:** "I'll help you onboard the TEM. Let me start by clarifying a few things...
+
+1. What specific TEM model are you working with?"
+
+**User:** "It's a JEOL JEM-ARM200F."
+
+**Agent:** "Got it. Let me check ace-hub for similar devices...
+```bash
+ace hub list --type devices --filter JEOL
+```
+[Shows results or 'No matches found']
+
+What manuals or documentation do you have available?"
+
+**User:** "I have the user manual PDF and a Python SDK from JEOL."
+
+**Agent:** "Great. What's your goal - full automation, human-in-the-loop, or building future capability?"
+
+**User:** "We want to automate sample screening workflows."
+
+**Agent:** "Any safety constraints or dangerous operations I should know about?"
+
+**User:** "High voltage operations and beam alignment need careful handling."
+
+**Agent:** "Understood. Based on this, I propose 3 onboarding approaches:
+
+[Option A, B, C as described in Phase 2]
+
+Which approach fits your needs?"
+
+**User:** "Option C - hybrid approach."
+
+**Agent:** "Perfect. Starting with Option C - Hybrid approach.
+
+**Phase 3: Plan**
+
+Let me create a detailed onboarding plan and ingest the manual..."
+
+[Continues through phases with specific CLI commands...]
+
+## Canonical Statements
+
+- "Before onboarding, let me check ace-hub for similar devices..."
+- "Proposing 3 onboarding approaches (Full Sim / HITL / Hybrid)..."
+- "Ingesting manuals: ace knowledge ingest..."
+- "Creating device: ace device create <id>..."
+- "Building atomic nodes with ace node build..."
+- "Validating with ace device validate and ace node validate..."
+- "Running ace evolve to extract patterns..."
+- "Pushing to ace-hub: ace hub push <id> --type device --commit"
