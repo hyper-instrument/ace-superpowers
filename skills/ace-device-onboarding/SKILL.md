@@ -1,5 +1,6 @@
 ---
-description: "ACE Paradigm 2: Onboard devices with evolution闭环 and ace-hub sharing"
+name: ace-device-onboarding
+description: "Use when onboarding new hardware devices to ACE with device definitions, simulators, nodes, and ace-hub sharing"
 ---
 
 # ACE Paradigm 2 - Device & Simulator Onboarding
@@ -13,6 +14,95 @@ Transform device manuals and SDKs into ACE-orchestratable assets with ace-hub sh
 - Need to create Device + Simulator definitions
 - No existing abstraction for target device
 - Want to share device configuration with team via ace-hub
+
+## Anti-Pattern: "Skip Clarify and Start Building"
+
+Every device onboarding requires full Clarify → Design → Plan → Execute → Verify → Share cycle. Even "simple" devices have safety constraints, API quirks, and integration requirements. The design can be concise for well-understood device types, but you MUST complete all phases and get user approval before writing any device code.
+
+## HARD-GATE: Scope Boundary — Device Adapter ONLY
+
+**Device onboarding is ADAPTER work, NOT framework development.**
+
+### ✅ ALLOWED — Within `~/.ace/store/` scope:
+- Device definitions in `~/.ace/store/devices/<id>/`
+- Node implementations in `~/.ace/store/nodes/atomic/<id>_*/`
+- Simulator configs in `~/.ace/store/simulators/`
+- Workflows in `~/.ace/store/workflows/`
+- Device-specific SKILL.md and memory
+- Pushing to ace-hub via `ace hub push`
+
+### ❌ FORBIDDEN — NEVER modify ACE core:
+- **NEVER** modify `/data/codes/ace/src/core/` or any framework code
+- **NEVER** modify `/data/codes/ace/ace/` CLI commands
+- **NEVER** modify `/data/codes/ace/evolution/`, `/data/codes/ace/composition/`, `/data/codes/ace/workflow/`
+- **NEVER** modify any files outside `~/.ace/store/` or ace-hub data repo
+
+### Violation Protocol
+
+If you find yourself wanting to:
+- "Fix" core framework code → STOP. Work around it in your device adapter.
+- "Add" a feature to ACE CLI → STOP. Use existing CLI commands only.
+- "Refactor" shared infrastructure → STOP. This is device onboarding, not framework dev.
+
+**Device onboarding ONLY creates adapter layers. Framework improvements require `ace-development` paradigm, not this skill.**
+
+## Checklist
+
+You MUST create a task for each of these items and complete them in order:
+
+1. **Clarify device requirements** — model, vendor, manuals, SDKs, safety constraints
+2. **Check ace-hub for similar devices** — `ace hub list --type devices`
+3. **Offer 3 onboarding approaches** — Full Sim / HITL / Hybrid with trade-offs
+4. **Get user approval on approach** — wait for explicit confirmation
+5. **Write onboarding plan** — invoke `superpowers:writing-plans`
+6. **Parse manuals (PDF→Markdown)** — use `pdf-to-markdown` skill
+7. **Ingest manuals** — `ace knowledge ingest <manual.md>`
+8. **Create device definition (TDD)** — test first, then `ace device create`
+9. **Build atomic nodes (TDD each)** — RED: test → GREEN: code → REFACTOR: clean
+10. **Create simulator (TDD)** — test first, then `ace simulator create`
+11. **Create test workflow** — validate all nodes end-to-end
+12. **Verify with two-layer validation** — unit tests + workflow integration
+13. **Extract patterns** — `ace evolve` for future onboardings
+14. **Push to ace-hub** — `ace hub push <id> --type device --commit`
+
+## Process Flow
+
+```dot
+digraph device_onboarding {
+    "Clarify device requirements" [shape=box];
+    "Check ace-hub for similar devices" [shape=box];
+    "Offer 3 onboarding approaches" [shape=box];
+    "User approves approach?" [shape=diamond];
+    "Write onboarding plan" [shape=box];
+    "Parse manuals (PDF→Markdown)" [shape=box];
+    "Ingest manuals" [shape=box];
+    "Create device definition (TDD)" [shape=box];
+    "Build atomic nodes (TDD each)" [shape=box];
+    "Create simulator (TDD)" [shape=box];
+    "Create test workflow" [shape=box];
+    "Two-layer validation passes?" [shape=diamond];
+    "Extract patterns (ace evolve)" [shape=box];
+    "Push to ace-hub" [shape=doublecircle];
+
+    "Clarify device requirements" -> "Check ace-hub for similar devices";
+    "Check ace-hub for similar devices" -> "Offer 3 onboarding approaches";
+    "Offer 3 onboarding approaches" -> "User approves approach?";
+    "User approves approach?" -> "Offer 3 onboarding approaches" [label="no, revise"];
+    "User approves approach?" -> "Write onboarding plan" [label="yes"];
+    "Write onboarding plan" -> "Parse manuals (PDF→Markdown)";
+    "Parse manuals (PDF->Markdown)" -> "Ingest manuals";
+    "Ingest manuals" -> "Create device definition (TDD)";
+    "Create device definition (TDD)" -> "Build atomic nodes (TDD each)";
+    "Build atomic nodes (TDD each)" -> "Create simulator (TDD)";
+    "Create simulator (TDD)" -> "Create test workflow";
+    "Create test workflow" -> "Two-layer validation passes?";
+    "Two-layer validation passes?" -> "Build atomic nodes (TDD each)" [label="no, fix"];
+    "Two-layer validation passes?" -> "Extract patterns (ace evolve)" [label="yes"];
+    "Extract patterns (ace evolve)" -> "Push to ace-hub";
+}
+```
+
+**The terminal state is pushing to ace-hub.** Do NOT skip validation or evolution phases. All nodes must pass both unit tests AND workflow integration tests before sharing.
 
 ## Key Principles
 

@@ -1,5 +1,6 @@
 ---
-description: "ACE Paradigm 3: Develop ACE framework using superpowers chain + evolution闭环"
+name: ace-development
+description: "Use when improving ACE framework core, adding commands, or enhancing node/workflow framework"
 ---
 
 # ACE Paradigm 3 - ACE Development
@@ -13,6 +14,60 @@ Improve ACE framework using official superpowers skills, with ACE evolution闭�
 - User wants to enhance node/workflow framework
 - User is modifying ACE source code
 - Task targets ACE framework itself, not user workflows/devices
+
+## Anti-Pattern: "Skip Design and Start Coding"
+
+Every ACE framework change requires full Clarify → Design → Plan → Execute → Verify → Evolution → Complete cycle. Even "simple" command additions or bug fixes can have cascading effects on the framework. The design can be concise for well-understood changes, but you MUST complete all phases and get user approval before writing any framework code.
+
+## Checklist
+
+You MUST create a task for each of these items and complete them in order:
+
+1. **Clarify improvement goal** — what part of ACE, constraints, breaking changes
+2. **Invoke superpowers:brainstorming** — explore context, propose 2-3 approaches
+3. **Get user approval on design** — wait for explicit confirmation
+4. **Write design spec** — `docs/superpowers/specs/YYYY-MM-DD-<feature>-design.md`
+5. **Invoke superpowers:writing-plans** — create implementation plan
+6. **Invoke superpowers:test-driven-development** — RED: test → GREEN: code → REFACTOR: clean
+7. **Execute plan** — invoke `superpowers:executing-plans` or `superpowers:subagent-driven-development`
+8. **Invoke superpowers:verification-before-completion** — all tests pass, no regressions
+9. **Extract patterns** — `ace evolve` for framework insights
+10. **Invoke superpowers:finishing-a-development-branch** — merge/PR/cleanup
+
+## Process Flow
+
+```dot
+digraph ace_development {
+    "Clarify improvement goal" [shape=box];
+    "Invoke brainstorming" [shape=box];
+    "Propose 2-3 approaches" [shape=box];
+    "User approves design?" [shape=diamond];
+    "Write design spec" [shape=box];
+    "Invoke writing-plans" [shape=box];
+    "Invoke TDD" [shape=box];
+    "Execute plan" [shape=box];
+    "Invoke verification" [shape=box];
+    "All tests pass?" [shape=diamond];
+    "Extract patterns (ace evolve)" [shape=box];
+    "Invoke finishing-a-branch" [shape=doublecircle];
+
+    "Clarify improvement goal" -> "Invoke brainstorming";
+    "Invoke brainstorming" -> "Propose 2-3 approaches";
+    "Propose 2-3 approaches" -> "User approves design?";
+    "User approves design?" -> "Propose 2-3 approaches" [label="no, revise"];
+    "User approves design?" -> "Write design spec" [label="yes"];
+    "Write design spec" -> "Invoke writing-plans";
+    "Invoke writing-plans" -> "Invoke TDD";
+    "Invoke TDD" -> "Execute plan";
+    "Execute plan" -> "Invoke verification";
+    "Invoke verification" -> "All tests pass?";
+    "All tests pass?" -> "Invoke TDD" [label="no, fix"];
+    "All tests pass?" -> "Extract patterns (ace evolve)" [label="yes"];
+    "Extract patterns (ace evolve)" -> "Invoke finishing-a-branch";
+}
+```
+
+**The terminal state is invoking finishing-a-development-branch.** Do NOT skip TDD or verification phases. All framework changes must have tests that fail first, then pass.
 
 ## Workflow
 
