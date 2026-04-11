@@ -2,8 +2,8 @@
   "name": "ace-superpowers",
   "description": "ACE plugin with three paradigms + superpowers skills for scientific instrument development",
   "owner": {
-    "name": "Hyper Instrument",
-    "email": "team@hyper-instrument.com"
+    "name": "Liu Peng",
+    "email": "liupeng@dptech"
   },
   "plugins": [
     {
@@ -12,8 +12,8 @@
       "version": "0.2.0",
       "source": "./",
       "author": {
-        "name": "Hyper Instrument",
-        "email": "team@hyper-instrument.com"
+        "name": "Liu Peng",
+        "email": "liupeng@dp.tech"
       }
     }
   ]
