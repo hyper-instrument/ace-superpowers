@@ -42,6 +42,13 @@ Ask one question at a time:
 4. What's the goal? (Full automation, HITL, or future capability?)
 5. Any safety constraints or dangerous operations?
 
+**If user mentions device but no manual provided:**
+> "To onboard this device properly, I'll need the device manual or documentation. Can you provide:
+> - User manual PDF
+> - API documentation
+> - SDK guides
+> - Any other technical documentation"
+
 **CLI Check:**
 ```bash
 # Check if similar device exists on ace-hub
@@ -88,10 +95,43 @@ Create detailed onboarding plan with:
 - Validation checkpoints
 - Estimated time for each step
 
-**Ingest manuals:**
-```bash
-ace knowledge ingest <manual.pdf> --tags device:<device-id>
+**Parse and Ingest Manuals:**
+
+**If user provides PDF manual, first parse to Markdown:**
+
+Use the `pdf-to-markdown` skill to convert the manual:
+
+```python
+from skills.pdf_to_markdown import convert_pdf_to_markdown
+
+md_path = convert_pdf_to_markdown(
+    pdf_path='<manual.pdf>',
+    title='<Device> User Manual',
+    languages='chi_sim+eng'  # Adjust based on manual language
+)
+print(f'✓ Manual converted: {md_path}')
 ```
+
+Or via CLI:
+```bash
+python3 -c "
+from skills.pdf_to_markdown import convert_pdf_to_markdown
+md_path = convert_pdf_to_markdown('<manual.pdf>', title='<Device> User Manual')
+print(f'Parsed: {md_path}')
+"
+```
+
+**Then ingest for ACE:**
+```bash
+ace knowledge ingest <manual.md> --tags device:<device-id>
+```
+
+**Note:** If user mentions a device but hasn't provided a manual:
+> "To onboard this device, I'll need the device manual or documentation. Can you provide:
+> - User manual PDF
+> - API documentation
+> - SDK guides
+> - Any other technical documentation"
 
 ### Phase 4: Execute with TDD
 
@@ -283,13 +323,30 @@ Which approach fits your needs?"
 
 **Phase 3: Plan**
 
-Let me create a detailed onboarding plan and ingest the manual..."
+Let me create a detailed onboarding plan and parse the manual...
+
+First, let me parse the PDF manual to Markdown:
+```bash
+python3 -c "
+from skills.pdf_to_markdown import convert_pdf_to_markdown
+md_path = convert_pdf_to_markdown('JEOL_JEM-ARM200F_manual.pdf', title='JEOL JEM-ARM200F User Manual')
+print(f'Parsed: {md_path}')
+"
+```
+
+Now ingesting the parsed manual:
+```bash
+ace knowledge ingest JEOL_JEM-ARM200F_manual.md --tags device:jeol-jem-arm200f
+```
 
 [Continues through phases with specific CLI commands...]
 
 ## Canonical Statements
 
 - "Before onboarding, let me check ace-hub for similar devices..."
+- "To onboard this device, I'll need the device manual. Can you provide the PDF?"
+- "Converting PDF manual to Markdown using pdf-to-markdown skill..."
+- "Parsing manual PDF to Markdown using OCR..."
 - "Proposing 3 onboarding approaches (Full Sim / HITL / Hybrid)..."
 - "Ingesting manuals: ace knowledge ingest..."
 - "TDD: NO NODE CODE WITHOUT FAILING TEST FIRST"
