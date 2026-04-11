@@ -24,9 +24,9 @@ Every device onboarding requires full Clarify → Design → Plan → Execute �
 **Device onboarding is ADAPTER work, NOT framework development.**
 
 ### ✅ ALLOWED — Within `~/.ace/store/` scope:
-- Device definitions in `~/.ace/store/devices/<id>/`
-- Node implementations in `~/.ace/store/nodes/atomic/<id>_*/`
-- Simulator configs in `~/.ace/store/simulators/`
+- Device definitions in `~/.ace/store/devices/<device_type>/<implementation>/`
+  - Example: `devices/stm/nanonis/` (hardware) or `devices/stm/simulator/` (simulator)
+- Node implementations in `~/.ace/store/nodes/atomic/<node_id>/`
 - Workflows in `~/.ace/store/workflows/`
 - Device-specific SKILL.md and memory
 - Pushing to ace-hub via `ace hub push`
@@ -361,17 +361,276 @@ ace hub push <workflow-id> --type workflow --commit
 
 **3. Document in CLAUDE.md (if universal patterns emerge)**
 
+## Reference Templates
+
+**Device adapter layer is thin. Implementation complexity lives in nodes.**
+
+### Device Definition — Standard Pattern
+
+**`device.json`** — Thin capability contract, NOT implementation:
+
+```json
+{
+  "name": "<device-type>/<implementation>",
+  "type": "<DEVICE_TYPE>",
+  "vendor": "<Vendor Name>",
+  "model": "<Model Name>",
+  "version": "1.0.0",
+  "description": "Brief description of the device",
+  "capabilities": [
+    "capability_1",
+    "capability_2",
+    "capability_3"
+  ],
+  "parameters": {
+    "param_group_1": {
+      "range": [min, max],
+      "presets": ["preset1", "preset2"]
+    },
+    "param_group_2": {
+      "options": ["option1", "option2"]
+    }
+  },
+  "connection": {
+    "protocol": "tcp|serial|rest|...",
+    "host": "127.0.0.1",
+    "port": 50000,
+    "authkey": "optional_auth_key"
+  },
+  "has_simulator": true,
+  "simulator_id": "<device-id>-simulator",
+  "simulator": {
+    "source": "local",
+    "simulator_id": "<device-id>-simulator",
+    "speed_multiplier": 10.0
+  },
+  "metadata": {
+    "simulator_class": "<DeviceName>Simulator",
+    "sdk_install": {
+      "method": "pip|local",
+      "package": "git+ssh://... OR /local/path/to/sdk"
+    }
+  }
+}
+```
+
+**Key Principles:**
+- `device.json` is a **capability declaration**, not implementation code
+- Implementation details go in **nodes**, referenced by capabilities
+- SDK configuration in `metadata.sdk_install` (pip URL or local path)
+- Simulator class name in `metadata.simulator_class` (matches device.py)
+
+### Device Simulator — Standard Pattern
+
+**`device.py`** — Thin adapter extending `SimulatorDevice`:
+
+```python
+"""
+<Device Name> Simulator Implementation
+Reference: FIB-SEM Simulator Implementation Pattern
+"""
+import asyncio
+import datetime
+import logging
+import time
+from copy import deepcopy
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+
+import sys
+import os
+from pathlib import Path
+ace_root = os.environ.get("ACE_ROOT", str(Path(__file__).parent.parent.parent.parent.parent.parent.parent))
+sys.path.insert(0, str(ace_root))
+
+from src.core.simulator.base import DeviceState, OperationResult, SimulatorDevice
+
+logger = logging.getLogger(__name__)
+
+
+class <DeviceName>Simulator(SimulatorDevice):
+    """
+    <Device Name> Simulator
+
+    Thin adapter layer:
+    - Defines default state schema
+    - Implements operation handlers
+    - Delegates complex logic to nodes
+    """
+
+    _DEFAULT_STATE: Dict[str, Any] = {
+        "subsystem_1": {"param1": default_value, "param2": default_value},
+        "subsystem_2": {"param3": default_value},
+        "status": "idle",
+    }
+
+    def __init__(self, simulator_id: str = "<device-id>-simulator", speed_multiplier: float = 10.0):
+        super().__init__(simulator_id=simulator_id, device_type="<DEVICE_TYPE>")
+        self._speed_multiplier = max(speed_multiplier, 0.1)
+        self._faults: Dict[str, float] = {}
+
+    @property
+    def vendor(self) -> str:
+        return "<Vendor Name>"
+
+    @property
+    def model(self) -> str:
+        return "<Model Name>"
+
+    @property
+    def description(self) -> str:
+        return "<Device> Simulator"
+
+    @property
+    def capabilities(self) -> List[str]:
+        return [
+            "capability_1",
+            "capability_2",
+            "capability_3",
+        ]
+
+    def connect(self) -> None:
+        """Initialize simulator state."""
+        self._state = DeviceState(
+            timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            properties=deepcopy(self._DEFAULT_STATE),
+        )
+        self._connected = True
+        self._faults = {}
+        logger.info(f"<Device> simulator connected: session={self.session_id}")
+
+    def disconnect(self) -> None:
+        """Clean up simulator state."""
+        self._connected = False
+        logger.info(f"<Device> simulator disconnected: session={self.session_id}")
+
+    def inject_fault(self, fault_type: str, severity: float = 0.5) -> None:
+        """Inject fault for testing (optional)."""
+        valid_faults = {"fault_type_1", "fault_type_2"}
+        if fault_type not in valid_faults:
+            logger.warning(f"Unknown fault type: {fault_type}")
+            return
+        self._faults[fault_type] = max(0.0, min(1.0, severity))
+
+    def remove_fault(self, fault_type: str) -> None:
+        """Remove injected fault (optional)."""
+        self._faults.pop(fault_type, None)
+
+    def set_speed_multiplier(self, value: float) -> None:
+        """Adjust simulation speed (optional)."""
+        self._speed_multiplier = max(value, 0.1)
+
+    def get_speed_multiplier(self) -> float:
+        return self._speed_multiplier
+
+    async def execute_operation(self, operation: str, params: Dict[str, Any]) -> OperationResult:
+        """
+        Route operation to handler.
+        Handler naming: _op_<operation_name>
+        """
+        start_time = time.time()
+        try:
+            handler = getattr(self, f"_op_{operation}", None)
+            if handler is None:
+                return OperationResult(
+                    success=False, operation=operation,
+                    error=f"Unknown operation: {operation}",
+                    duration_seconds=time.time() - start_time,
+                )
+            result = await handler(params)
+            result.duration_seconds = time.time() - start_time
+            return result
+        except Exception as e:
+            return OperationResult(
+                success=False, operation=operation, error=str(e),
+                duration_seconds=time.time() - start_time,
+            )
+
+    # --- Operation Handlers ---
+    # Each handler is thin - complex logic goes in nodes
+
+    async def _op_connect(self, params: Dict[str, Any]) -> OperationResult:
+        """Handle connect operation."""
+        self.connect()
+        return OperationResult(success=True, operation="connect")
+
+    async def _op_disconnect(self, params: Dict[str, Any]) -> OperationResult:
+        """Handle disconnect operation."""
+        self.disconnect()
+        return OperationResult(success=True, operation="disconnect")
+
+    async def _op_get_state(self, params: Dict[str, Any]) -> OperationResult:
+        """Return current device state."""
+        return OperationResult(
+            success=True,
+            operation="get_state",
+            data={"state": self._state.properties if self._state else {}}
+        )
+
+    async def _op_set_parameter(self, params: Dict[str, Any]) -> OperationResult:
+        """
+        Set device parameter.
+        Validation logic should be in node, this just applies.
+        """
+        subsystem = params.get("subsystem")
+        param = params.get("parameter")
+        value = params.get("value")
+
+        if not all([subsystem, param, value is not None]):
+            return OperationResult(
+                success=False,
+                operation="set_parameter",
+                error="Missing subsystem, parameter, or value"
+            )
+
+        if self._state and subsystem in self._state.properties:
+            self._state.properties[subsystem][param] = value
+            return OperationResult(success=True, operation="set_parameter")
+
+        return OperationResult(
+            success=False,
+            operation="set_parameter",
+            error=f"Invalid subsystem: {subsystem}"
+        )
+
+    # Add more operation handlers as needed...
+    # Each should be THIN - just state updates and basic validation
+```
+
+**Key Principles:**
+- `device.py` is a **thin adapter** extending `SimulatorDevice`
+- State schema defined in `_DEFAULT_STATE`
+- Operation handlers route to `_op_<operation>` methods
+- **Keep handlers thin** — complex validation/encoding goes in nodes
+- Fault injection optional but recommended for testing
+- Reference `FIBSEMSimulator` for complete implementation pattern
+
+### Scope Reminder
+
+**Hierarchy:** `devices/<device_type>/<implementation>/`
+- Example: `devices/stm/nanonis/` (hardware), `devices/stm/simulator/` (simulator)
+
+| Layer | Content | Location |
+|-------|---------|----------|
+| Device definition | Capability contract, SDK config | `device.json` (in `<type>/<impl>/`) |
+| Simulator adapter | State management, operation routing | `device.py` (in `<type>/simulator/`) |
+| Operation logic | Complex validation, protocol encoding | **Nodes** |
+| SDK integration | Device-specific API calls | **Nodes** |
+
+**Device adapter is thin. Implementation complexity lives in nodes.**
+
 ## Deliverables
 
 | Artifact | Location | Hub Path | Purpose |
 |----------|----------|----------|---------|
-| Device definition | `~/.ace/store/devices/<id>/` | `ace-hub/devices/<id>/` | Capability contract |
-| SKILL.md | `~/.ace/store/devices/<id>/SKILL.md` | `ace-hub/devices/<id>/SKILL.md` | API documentation |
-| Simulator | `src/core/simulator/<id>.py` or `~/.ace/store/simulators/` | `ace-hub/simulators/<id>/` | Testing & validation |
-| Atomic nodes | `~/.ace/store/nodes/atomic/<id>_*/` | `ace-hub/nodes/<id>_*/` | Reusable operations |
-| Workflows | `~/.ace/store/workflows/<id>.json` | `ace-hub/workflows/<id>/` | Ready-to-run workflows |
-| Memory | `~/.ace/store/devices/<id>/memory/` | `ace-hub/devices/<id>/memory/` | Device-specific data |
-| Insights | `~/.ace/insights/device-<id>*.md` | - | Patterns for future |
+| Device definition | `~/.ace/store/devices/<type>/<impl>/` | `ace-hub/devices/<type>/<impl>/` | Capability contract |
+| SKILL.md | `~/.ace/store/devices/<type>/<impl>/SKILL.md` | `ace-hub/devices/<type>/<impl>/SKILL.md` | API documentation |
+| Simulator | `~/.ace/store/devices/<type>/simulator/` | `ace-hub/devices/<type>/simulator/` | Testing & validation |
+| Atomic nodes | `~/.ace/store/nodes/atomic/<node_id>/` | `ace-hub/nodes/<node_id>/` | Reusable operations |
+| Workflows | `~/.ace/store/workflows/<workflow_id>.json` | `ace-hub/workflows/<workflow_id>/` | Ready-to-run workflows |
+| Memory | `~/.ace/store/devices/<type>/<impl>/memory/` | `ace-hub/devices/<type>/<impl>/memory/` | Device-specific data |
+| Insights | `~/.ace/insights/device-<type>*.md` | - | Patterns for future |
 
 ## Interaction Flow Example
 
