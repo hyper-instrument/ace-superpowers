@@ -26,7 +26,7 @@ Every device onboarding requires full Clarify → Design → Plan → Execute �
 ### ✅ ALLOWED — Within `~/.ace/store/` scope:
 - Device definitions in `~/.ace/store/devices/<device_type>/<implementation>/`
   - Example: `devices/stm/nanonis/` (hardware) or `devices/stm/simulator/` (simulator)
-- Node implementations in `~/.ace/store/nodes/atomic/<node_id>/`
+- Node implementations in `~/.ace/store/nodes/<device-id>/<node_id>/`
 - Workflows in `~/.ace/store/workflows/`
 - Device-specific SKILL.md and memory
 - Pushing to ace-hub via `ace hub push`
@@ -58,7 +58,7 @@ You MUST create a task for each of these items and complete them in order:
 6. **Parse manuals (PDF→Markdown)** — use `pdf-to-markdown` skill
 7. **Ingest manuals** — `ace knowledge ingest <manual.md>`
 8. **Create device definition (TDD)** — test first, then `ace device create`
-9. **Build atomic nodes (TDD each)** — RED: test → GREEN: code → REFACTOR: clean
+9. **Build device nodes (TDD each)** — RED: test → GREEN: code → REFACTOR: clean
 10. **Create simulator (TDD)** — test first, then `ace simulator create`
 11. **Create test workflow** — validate all nodes end-to-end
 12. **Verify with two-layer validation** — unit tests + workflow integration
@@ -77,7 +77,7 @@ digraph device_onboarding {
     "Parse manuals (PDF→Markdown)" [shape=box];
     "Ingest manuals" [shape=box];
     "Create device definition (TDD)" [shape=box];
-    "Build atomic nodes (TDD each)" [shape=box];
+    "Build device nodes (TDD each)" [shape=box];
     "Create simulator (TDD)" [shape=box];
     "Create test workflow" [shape=box];
     "Two-layer validation passes?" [shape=diamond];
@@ -92,11 +92,11 @@ digraph device_onboarding {
     "Write onboarding plan" -> "Parse manuals (PDF→Markdown)";
     "Parse manuals (PDF->Markdown)" -> "Ingest manuals";
     "Ingest manuals" -> "Create device definition (TDD)";
-    "Create device definition (TDD)" -> "Build atomic nodes (TDD each)";
-    "Build atomic nodes (TDD each)" -> "Create simulator (TDD)";
+    "Create device definition (TDD)" -> "Build device nodes (TDD each)";
+    "Build device nodes (TDD each)" -> "Create simulator (TDD)";
     "Create simulator (TDD)" -> "Create test workflow";
     "Create test workflow" -> "Two-layer validation passes?";
-    "Two-layer validation passes?" -> "Build atomic nodes (TDD each)" [label="no, fix"];
+    "Two-layer validation passes?" -> "Build device nodes (TDD each)" [label="no, fix"];
     "Two-layer validation passes?" -> "Extract patterns (ace evolve)" [label="yes"];
     "Extract patterns (ace evolve)" -> "Push to ace-hub";
 }
@@ -234,9 +234,9 @@ ace knowledge ingest <manual.md> --tags device:<device-id>
 ace device create <device-id> --from-spec device_spec.json
 ```
 
-**2. Build Atomic Nodes (TDD for each):**
+**2. Build Device Nodes (TDD for each):**
 
-For each atomic operation - TDD cycle:
+For each device operation - TDD cycle:
 
 **RED - Write Failing Test:**
 ```bash
@@ -627,7 +627,7 @@ class <DeviceName>Simulator(SimulatorDevice):
 | Device definition | `~/.ace/store/devices/<type>/<impl>/` | `ace-hub/devices/<type>/<impl>/` | Capability contract |
 | SKILL.md | `~/.ace/store/devices/<type>/<impl>/SKILL.md` | `ace-hub/devices/<type>/<impl>/SKILL.md` | API documentation |
 | Simulator | `~/.ace/store/devices/<type>/simulator/` | `ace-hub/devices/<type>/simulator/` | Testing & validation |
-| Atomic nodes | `~/.ace/store/nodes/atomic/<node_id>/` | `ace-hub/nodes/<node_id>/` | Reusable operations |
+| Device nodes | `~/.ace/store/nodes/<device-id>/<node_id>/` | `ace-hub/nodes/<device-id>/<node_id>/` | Reusable operations |
 | Workflows | `~/.ace/store/workflows/<workflow_id>.json` | `ace-hub/workflows/<workflow_id>/` | Ready-to-run workflows |
 | Memory | `~/.ace/store/devices/<type>/<impl>/memory/` | `ace-hub/devices/<type>/<impl>/memory/` | Device-specific data |
 | Insights | `~/.ace/insights/device-<type>*.md` | - | Patterns for future |
