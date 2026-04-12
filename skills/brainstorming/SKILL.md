@@ -17,25 +17,71 @@ Do NOT invoke any implementation skill, write any code, scaffold any project, or
 
 Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
 
+## ACE Paradigm Selection (If Applicable)
+
+If the user's task involves ACE (Accumulate-Composable-Evolve framework), you MUST determine which of the three paradigms applies:
+
+```
+What is your task?
+    ↓
+┌──────────────────────────────────────┐
+│ Are you improving ACE itself?        │
+│ (core code, new skills, framework)   │
+└──────────────────────────────────────┘
+    │ Yes                    │ No
+    ↓                        ↓
+┌──────────────────┐    ┌──────────────────────────────────────┐
+│ Paradigm 3       │    │ Do you have a new device with        │
+│ ACE Development  │    │ manuals and SDK to integrate?        │
+│                  │    └──────────────────────────────────────┘
+│ ace-development  │        │ Yes                    │ No
+│ skill            │        ↓                        ↓
+│                  │    ┌──────────────────┐    ┌──────────────────┐
+│ 6-phase workflow │    │ Paradigm 2       │    │ Paradigm 1       │
+│                  │    │ Device Onboarding│    │ Core Loop        │
+└──────────────────┘    └──────────────────┘    └──────────────────┘
+                        ace-device-           ace-run-workflow
+                        onboarding            skill
+                        skill
+```
+
+| Paradigm | When to Use | Key Characteristics |
+|----------|-------------|---------------------|
+| **P1** - Core Loop | Build/run workflows on existing devices | Uses `ace run workflow`, CLI execution, TDD for nodes |
+| **P2** - Device Onboarding | New device with manuals/SDK to integrate | PDF parsing, device+simulator creation, TDD mandatory |
+| **P3** - ACE Development | Improve ACE framework core | Superpowers chain: TDD → executing-plans → verification |
+
+**Detection Questions:**
+- Are they working with a **new physical device** (microscope, instrument, hardware)? → **P2**
+- Are they modifying **ACE framework code** (src/core/, evolution/, commands)? → **P3**
+- Are they building **workflows/nodes** on existing devices? → **P1**
+
+Once paradigm is determined, load the corresponding skill and follow its workflow.
+
 ## Checklist
 
 You MUST create a task for each of these items and complete them in order:
 
 1. **Explore project context** — check files, docs, recent commits
-2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
-3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-4. **Propose 2-3 approaches** — with trade-offs and your recommendation
-5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
-7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **User reviews written spec** — ask user to review the spec file before proceeding
-9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+2. **Detect ACE Paradigm** (if ACE-related) — P1, P2, or P3?
+3. **Load paradigm skill** — invoke the appropriate ace-* skill
+4. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
+5. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+6. **Propose 2-3 approaches** — with trade-offs and your recommendation (following paradigm guidance)
+7. **Present design** — in sections scaled to their complexity, get user approval after each section
+8. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
+9. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+10. **User reviews written spec** — ask user to review the spec file before proceeding
+11. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
 
 ```dot
 digraph brainstorming {
     "Explore project context" [shape=box];
+    "ACE-related task?" [shape=diamond];
+    "Detect paradigm (P1/P2/P3)" [shape=box];
+    "Load paradigm skill" [shape=box];
     "Visual questions ahead?" [shape=diamond];
     "Offer Visual Companion\n(own message, no other content)" [shape=box];
     "Ask clarifying questions" [shape=box];
@@ -47,7 +93,11 @@ digraph brainstorming {
     "User reviews spec?" [shape=diamond];
     "Invoke writing-plans skill" [shape=doublecircle];
 
-    "Explore project context" -> "Visual questions ahead?";
+    "Explore project context" -> "ACE-related task?";
+    "ACE-related task?" -> "Detect paradigm (P1/P2/P3)" [label="yes"];
+    "ACE-related task?" -> "Visual questions ahead?" [label="no"];
+    "Detect paradigm (P1/P2/P3)" -> "Load paradigm skill";
+    "Load paradigm skill" -> "Visual questions ahead?";
     "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
     "Visual questions ahead?" -> "Ask clarifying questions" [label="no"];
     "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
@@ -70,6 +120,10 @@ digraph brainstorming {
 **Understanding the idea:**
 
 - Check out the current project state first (files, docs, recent commits)
+- **If ACE-related: Determine paradigm** — ask clarifying questions to detect P1/P2/P3:
+  - "Are you working with a new physical device that needs to be integrated?" → P2
+  - "Are you modifying the ACE framework itself?" → P3
+  - "Are you building workflows or nodes on existing devices?" → P1
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
 - For appropriately-scoped projects, ask questions one at a time to refine the idea
@@ -79,7 +133,10 @@ digraph brainstorming {
 
 **Exploring approaches:**
 
-- Propose 2-3 different approaches with trade-offs
+- **If ACE P1 (Run Workflow):** Propose approaches around workflow topology, node composition, ace-hub sharing
+- **If ACE P2 (Device Onboarding):** Propose 3 approaches: Full Simulator / HITL / Hybrid
+- **If ACE P3 (ACE Development):** Propose approaches following superpowers philosophy
+- For non-ACE: Propose 2-3 different approaches with trade-offs
 - Present options conversationally with your recommendation and reasoning
 - Lead with your recommended option and explain why
 
@@ -87,6 +144,7 @@ digraph brainstorming {
 
 - Once you believe you understand what you're building, present the design
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
+- **Include paradigm designation** in design doc header if ACE-related
 - Ask after each section whether it looks right so far
 - Cover: architecture, components, data flow, error handling, testing
 - Be ready to go back and clarify if something doesn't make sense
@@ -110,6 +168,16 @@ digraph brainstorming {
 
 - Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
   - (User preferences for spec location override this default)
+- **Include paradigm designation in spec header** if ACE-related:
+  ```markdown
+  # [Feature Name] Design Specification
+
+  > **ACE Paradigm:** P1 (Core Loop) / P2 (Device Onboarding) / P3 (ACE Development)
+  > **Paradigm Skill:** ace-run-workflow / ace-device-onboarding / ace-development
+
+  ## Overview
+  ...
+  ```
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit the design document to git
 
@@ -120,6 +188,7 @@ After writing the spec document, look at it with fresh eyes:
 2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
 3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
 4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+5. **Paradigm alignment** (if ACE): Does the design follow the selected paradigm's principles and workflow?
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
@@ -133,6 +202,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 **Implementation:**
 
 - Invoke the writing-plans skill to create a detailed implementation plan
+- **Pass paradigm context** — if ACE-related, ensure writing-plans knows which paradigm to follow
 - Do NOT invoke any other skill. writing-plans is the next step.
 
 ## Key Principles
@@ -143,6 +213,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 - **Explore alternatives** - Always propose 2-3 approaches before settling
 - **Incremental validation** - Present design, get approval before moving on
 - **Be flexible** - Go back and clarify when something doesn't make sense
+- **Paradigm-aware** - If ACE-related, follow the selected paradigm's guidance
 
 ## Visual Companion
 
