@@ -56,7 +56,7 @@ def detect_changed_entities(tool_name: str, result: dict) -> list:
         entity_id = None
 
         if entity_type == "nodes":
-            # ~/.ace/store/nodes/{atomic|auto|composite|builtin}/{node_id}/...
+            # ~/.ace/store/nodes/{*|builtin}/{node_id}/...
             if len(parts) >= 3:
                 entity_id = parts[2]
         elif entity_type == "devices":
@@ -148,7 +148,7 @@ def main():
         test_dir = None
 
         if entity_type == "node":
-            for sub in ["atomic", "auto", "composite", "builtin"]:
+            for sub in ["*", "builtin"]:
                 td = store_dir / "nodes" / sub / entity_id / "tests"
                 if td.exists():
                     test_dir = td

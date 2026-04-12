@@ -9,15 +9,48 @@ Transform device manuals and SDKs into ACE-orchestratable assets with ace-hub sh
 
 ## When to Use
 
-- User brings new instrument/device manuals
-- User provides SDK/API with examples
-- Need to create Device + Simulator definitions
-- No existing abstraction for target device
-- Want to share device configuration with team via ace-hub
+**CRITICAL: This skill is ONLY for execution phase, NOT for starting new device onboarding.**
+
+✅ **CAN use when:**
+- Executing an already-approved onboarding plan (`docs/superpowers/plans/*.md` exists)
+- Brainstorming/writing-plans phase needs to reference device onboarding patterns
+- User asks questions about device onboarding process
+
+❌ **CANNOT use when:**
+- No spec exists (`docs/superpowers/specs/*.md` not found)
+- No plan exists (`docs/superpowers/plans/*.md` not found)
+- User says "onboard this device" without prior brainstorming
+
+**If no spec/plan exists → STOP and invoke `superpowers:brainstorming` first.**
 
 ## Anti-Pattern: "Skip Clarify and Start Building"
 
 Every device onboarding requires full Clarify → Design → Plan → Execute → Verify → Share cycle. Even "simple" devices have safety constraints, API quirks, and integration requirements. The design can be concise for well-understood device types, but you MUST complete all phases and get user approval before writing any device code.
+
+## HARD GATE: Brainstorming Required
+
+**You CANNOT skip brainstorming.** Before any device onboarding work, you MUST:
+
+1. **Check if brainstorming already done:**
+   - Does `docs/superpowers/specs/YYYY-MM-DD-<device>-onboarding.md` exist?
+   - Has the user already approved an onboarding approach (Full Sim / HITL / Hybrid)?
+
+2. **If NO spec exists:**
+   - **STOP immediately**
+   - **Invoke `superpowers:brainstorming`**
+   - Propose 3 onboarding approaches
+   - Wait for user approval
+   - Then continue to writing-plans
+
+3. **If spec exists but not approved:**
+   - Present the 3 onboarding approaches to user
+   - Wait for explicit choice (A/B/C)
+   - Then continue
+
+4. **If spec exists and approved:**
+   - Proceed to `superpowers:writing-plans`
+
+**Never onboard a device without prior brainstorming and approved approach.**
 
 ## HARD-GATE: Scope Boundary — Device Adapter ONLY
 

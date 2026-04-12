@@ -9,15 +9,47 @@ Improve ACE framework using official superpowers skills, with ACE evolution闭�
 
 ## When to Use
 
-- User wants to improve ACE core (evolution/, composition/, workflow/)
-- User wants to add new /ace:* commands
-- User wants to enhance node/workflow framework
-- User is modifying ACE source code
-- Task targets ACE framework itself, not user workflows/devices
+**CRITICAL: This skill is ONLY for execution phase, NOT for starting new work.**
+
+✅ **CAN use when:**
+- Executing an already-approved implementation plan (`docs/superpowers/plans/*.md` exists)
+- Brainstorming/writing-plans phase needs to reference ACE framework patterns
+- User asks questions about ACE development process
+
+❌ **CANNOT use when:**
+- No spec exists (`docs/superpowers/specs/*.md` not found)
+- No plan exists (`docs/superpowers/plans/*.md` not found)
+- User says "implement X" without prior brainstorming
+
+**If no spec/plan exists → STOP and invoke `superpowers:brainstorming` first.**
 
 ## Anti-Pattern: "Skip Design and Start Coding"
 
 Every ACE framework change requires full Clarify → Design → Plan → Execute → Verify → Evolution → Complete cycle. Even "simple" command additions or bug fixes can have cascading effects on the framework. The design can be concise for well-understood changes, but you MUST complete all phases and get user approval before writing any framework code.
+
+## HARD GATE: Brainstorming Required
+
+**You CANNOT skip brainstorming.** Before any creative work, you MUST:
+
+1. **Check if brainstorming already done:**
+   - Does `docs/superpowers/specs/YYYY-MM-DD-<feature>-design.md` exist?
+   - Has the user already approved a design approach?
+
+2. **If NO spec exists:**
+   - **STOP immediately**
+   - **Invoke `superpowers:brainstorming`**
+   - Wait for user approval on design
+   - Then continue to writing-plans
+
+3. **If spec exists but not approved:**
+   - Present spec to user
+   - Wait for explicit "yes, proceed"
+   - Then continue
+
+4. **If spec exists and approved:**
+   - Proceed to `superpowers:writing-plans`
+
+**Never write framework code without prior brainstorming.**
 
 ## Checklist
 
