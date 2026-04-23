@@ -115,6 +115,27 @@ ace paradigm status
 
 The five Clarify gates (`device_info`, `manuals`, `sdk`, `goal`, `safety`) correspond exactly to the five questions in "Phase 1: Clarify" below. Do not move to Design until all five are marked. For later phases the gate ids are `approaches_proposed`/`user_approved` (DESIGN), `plan_written` (PLAN), `device_created`/`nodes_built`/`simulator_created` (EXECUTE), `unit_tests_passed`/`workflow_passed` (VERIFY), `patterns_extracted` (EVOLVE), `pushed_to_hub` (SHARE).
 
+### Phase-specific subagents (hard gating)
+
+When Branch A+B is installed (the default for `ace init` / `ace agent`), Claude Code additionally:
+
+1. Registers a `PreToolUse` hook that **blocks** `Write` / `Edit` / `MultiEdit` / `NotebookEdit` / destructive `Bash` when required gates for the current phase are still unsatisfied. The block message tells you exactly which gates are missing and which subagent can close them.
+2. Installs one subagent per P2 phase under `.claude/agents/ace-p2-<phase>.md`. Each subagent has a tool whitelist scoped to that phase (e.g. `ace-p2-clarify` can `AskUserQuestion`, `Read`, `Grep` but not `Write`).
+
+The flow you should follow:
+
+```
+P2/CLARIFY  →  Task(subagent_type="ace-p2-clarify")   # gathers the 5 answers
+P2/DESIGN   →  Task(subagent_type="ace-p2-design")    # proposes approaches, gets approval
+P2/PLAN     →  Task(subagent_type="ace-p2-plan")      # uses writing-plans to draft plan
+P2/EXECUTE  →  Task(subagent_type="ace-p2-execute")   # TDD build (mutation tools unlocked)
+P2/VERIFY   →  Task(subagent_type="ace-p2-verify")    # unit + integration
+P2/EVOLVE   →  Task(subagent_type="ace-p2-evolve")    # optional pattern extraction
+P2/SHARE    →  Task(subagent_type="ace-p2-share")     # optional ace-hub publish
+```
+
+Each subagent is responsible for calling `ace paradigm mark-gate ...` and `ace paradigm advance` before returning control. If you skip delegation and try to `Write` / `Edit` before the current phase's required gates are satisfied, the PreToolUse hook will refuse the call with a block message pointing you back at the right subagent.
+
 ## Checklist
 
 You MUST create a task for each of these items and complete them in order:
