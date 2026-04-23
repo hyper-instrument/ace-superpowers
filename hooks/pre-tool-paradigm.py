@@ -52,4 +52,14 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Match the fail-open contract that post-tool-paradigm.py /
+    # session-start-paradigm.py / user-prompt-paradigm.py use: any
+    # uncaught exception must still produce exit 0 so Claude Code
+    # doesn't interpret a hook crash as a tool block. subprocess.run
+    # can raise PermissionError or other OSError subclasses that the
+    # inner try/except in main() doesn't catch.
+    try:
+        main()
+    except Exception:
+        pass
+    sys.exit(0)
