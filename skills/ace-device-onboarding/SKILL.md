@@ -79,6 +79,42 @@ If you find yourself wanting to:
 
 **Device onboarding ONLY creates adapter layers. Framework improvements require `ace-development` paradigm, not this skill.**
 
+## Track Progress with `ace paradigm`
+
+Your human partner needs to see where you are in the flow — they can't infer progress from free-form chat. ACE ships a structured state tracker; use it at the boundaries of each phase so the TUI, hooks, and any future dashboard all stay in sync.
+
+**At the start of an onboarding session:**
+
+```bash
+ace paradigm start P2
+```
+
+**During Phase 1 (Clarify), after you have collected each answer** (you may ask freely — `AskUserQuestion` is not required, `TodoWrite`/normal chat is fine), record it:
+
+```bash
+ace paradigm mark-gate CLARIFY device_info   --value "Nanonis SPM (SPECS)"
+ace paradigm mark-gate CLARIFY manuals       --value "/data/manuals/nanonis.pdf"
+ace paradigm mark-gate CLARIFY sdk           --value "Python SDK v5.4"
+ace paradigm mark-gate CLARIFY goal          --value "HITL with future Full Automation"
+ace paradigm mark-gate CLARIFY safety        --value "Avoid tip crash; current limit 1nA"
+```
+
+**Before leaving any phase**, move the state forward:
+
+```bash
+ace paradigm advance           # → next phase
+# or
+ace paradigm advance --to PLAN # explicit target
+```
+
+**At any time**, inspect where you are:
+
+```bash
+ace paradigm status
+```
+
+The five Clarify gates (`device_info`, `manuals`, `sdk`, `goal`, `safety`) correspond exactly to the five questions in "Phase 1: Clarify" below. Do not move to Design until all five are marked. For later phases the gate ids are `approaches_proposed`/`user_approved` (DESIGN), `plan_written` (PLAN), `device_created`/`nodes_built`/`simulator_created` (EXECUTE), `unit_tests_passed`/`workflow_passed` (VERIFY), `patterns_extracted` (EVOLVE), `pushed_to_hub` (SHARE).
+
 ## Checklist
 
 You MUST create a task for each of these items and complete them in order:
