@@ -33,8 +33,9 @@ Rules:
 - After each answer, acknowledge briefly (one line) and immediately ask the next gate.
 - If the human says "just do it" / "you decide" / "pick sensible defaults" — still collect
   all five answers, but accept short ones. Do not skip any gate.
-- You may use `Read` / `Glob` / `Grep` to inspect SDK source when the human points you at it,
-  but do NOT run exploratory `Bash` or `Read` before asking all 5 gates.
+- You may use `Read` / `Glob` / `Grep` to inspect SDK source **only when the human explicitly
+  points you at a file path** in their answer. Do not run exploratory `Read` or `Bash` on
+  your own initiative during Phase 1.
 - **Each gate MUST use `AskUserQuestion`** — do not infer answers from context or skip gates.
 
 When all five gates are collected, summarise the answers back to the human in one short
