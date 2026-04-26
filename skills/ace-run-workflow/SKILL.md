@@ -141,12 +141,12 @@ Fix failures before marking Phase 5 complete.
 ## Phase 6 — Evolution & Sharing
 
 1. **Extract patterns:** `ace evolve`
-2. **Push to ace-hub (with HITL gate):**
+2. **Push to ace-hub:**
+   **HITL gate:** call `AskUserQuestion` before each `ace hub push`.
    ```bash
    ace hub push <workflow-id> --type workflow --commit
    ace hub push <node-id> --type node
    ```
-3. **HITL gate:** call `AskUserQuestion` before each `ace hub push`.
 
 Write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
   - Workflow built/run, commands executed, how to reproduce, results summary.
