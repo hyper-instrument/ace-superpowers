@@ -155,7 +155,14 @@ Write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
 - Writing code before all 4 Clarify gates → STOP, go back to Phase 1
 - Skipping `AskUserQuestion` for a gate → STOP, ask now
 - Skipping `AskUserQuestion` before destructive CLI calls → STOP, ask first
-- Running `Bash` exploratory commands during Phase 1 without user direction → STOP, ask first
+- Running `Bash` exploratory commands during Phase 1 without the human's direction → STOP, ask first
 - Starting execution before plan is approved → STOP, present plan first
 - Calling workflow APIs in Python instead of `ace run workflow` → STOP, use CLI
 - 100+ tool calls without completion → simplify approach
+
+### TDD Red Flags — STOP and Delete
+
+- Node code written before test → Delete and start over
+- Test passes immediately → Fix test, must fail first
+- "Node is too simple to test" → Test it anyway
+- "I'll add tests after building workflow" → No. Test-first NOW
