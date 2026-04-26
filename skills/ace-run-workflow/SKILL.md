@@ -39,7 +39,7 @@ Rules:
 When all four gates are collected, summarise the answers back to the human in one
 short message and explicitly ask for approval to move to Phase 2.
 
-## Phase 2 — Design
+## Phase 2 — Design (brainstorming + spec)
 
 Once Phase 1 is approved:
 
@@ -50,6 +50,7 @@ Once Phase 1 is approved:
    ace node list --device <device-id>
    ```
 2. **If "run workflow"** — show matching workflows, call `AskUserQuestion` to confirm choice.
+   Pull from hub if needed: `ace hub pull <workflow-id> --type workflow`.
    If no match, switch to "build" mode.
 3. **If "build workflow"** — propose **2 or 3** workflow topologies with node compositions.
    Call `AskUserQuestion` for the human to choose.
@@ -57,7 +58,7 @@ Once Phase 1 is approved:
 5. **If "modify existing"** — show current workflow/node, identify what to change,
    call `AskUserQuestion` to confirm modification scope.
 
-## Phase 3 — Plan (write plan, then confirm before execution)
+## Phase 3 — Plan (structured planning)
 
 1. **Write a task list** via `TodoWrite` enumerating concrete tasks for Phases 4–6.
    Typical breakdown:
@@ -123,7 +124,7 @@ Never modify ACE framework core. Work around limitations in your nodes/workflows
 - Don't create excessive tasks. 5–10 `TodoWrite` items is ideal.
 - Keep tool calls minimal: aim for < 100 total tool calls.
 
-## Phase 5 — Verify
+## Phase 5 — Verify (verification before completion)
 
 1. Check execution results:
    ```bash
