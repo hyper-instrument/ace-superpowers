@@ -54,6 +54,8 @@ Once Phase 1 is approved:
 3. **If "build workflow"** — propose **2 or 3** workflow topologies with node compositions.
    Call `AskUserQuestion` for the human to choose.
 4. **If "build node"** — define input/output ports (JSON Schema), get approval.
+5. **If "modify existing"** — show current workflow/node, identify what to change,
+   call `AskUserQuestion` to confirm modification scope.
 
 ## Phase 3 — Plan (write plan, then confirm before execution)
 
@@ -96,6 +98,11 @@ ace run workflow <workflow-id> [--params '<json>']
 1. Build any missing nodes with TDD (see above).
 2. Compose workflow: `ace workflow create --name <name> --device <device-id> --nodes '<node-list>'`
 3. Execute: `ace run workflow <workflow-id>`
+
+**If "modify existing":**
+1. Read and show the current workflow/node definition to the human.
+2. Apply modifications (TDD for node changes).
+3. Re-run: `ace run workflow <workflow-id>` to verify.
 
 ### Critical Rule
 
