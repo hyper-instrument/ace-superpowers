@@ -63,7 +63,7 @@ You MUST create a task for each of these items and complete them in order:
 6. **Invoke superpowers:test-driven-development** — RED: test → GREEN: code → REFACTOR: clean
 7. **Execute plan** — invoke `superpowers:executing-plans` or `superpowers:subagent-driven-development`
 8. **Invoke superpowers:verification-before-completion** — all tests pass, no regressions
-9. **Invoke ace-superpowers:ace-evolve** — LLM-driven evolution闭环 for framework insights
+9. **Invoke superpowers:ace-evolve** — LLM-driven evolution闭环 for framework insights
 10. **Invoke superpowers:finishing-a-development-branch** — merge/PR/cleanup
 
 ## Process Flow
@@ -178,7 +178,7 @@ ace sandbox test <test_pattern>
 
 ### Phase 6: Evolution闭环 (ACE)
 
-**Invoke `ace-superpowers:ace-evolve`** for LLM-driven evolution闭环.
+**Invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
 
 The `ace-evolve` skill will:
 1. Gather context (traces from `~/.ace/traces/`, known quirks, existing insights, recent changes)
@@ -200,7 +200,7 @@ The `ace-evolve` skill will:
 - Plans: docs/superpowers/plans/YYYY-MM-DD-<feature>-plan.md
 - Traces: ~/.ace/traces/ (auto-generated)
 - Insights: ~/.ace/insights/ (auto-generated)
-- Evolution: Invoke `ace-superpowers:ace-evolve` after completion for LLM-driven evolution
+- Evolution: Invoke `superpowers:ace-evolve` after completion for LLM-driven evolution
 
 ## Key Principles
 
@@ -213,7 +213,7 @@ The `ace-evolve` skill will:
 **From ACE:**
 - ACE evolution for learning from development traces
 - Both frameworks complement each other
-- Invoke `ace-superpowers:ace-evolve` after development for LLM-driven evolution闭环
+- Invoke `superpowers:ace-evolve` after development for LLM-driven evolution闭环
 
 ## Canonical Statements
 
@@ -224,7 +224,7 @@ The `ace-evolve` skill will:
 - "GREEN: Writing minimal code to pass..."
 - "REFACTOR: Cleaning up while tests stay green..."
 - "Execution phase: invoking superpowers:executing-plans..."
-- "Evolution phase: invoking ace-superpowers:ace-evolve for LLM-driven evolution..."
+- "Evolution phase: invoking superpowers:ace-evolve for LLM-driven evolution..."
 - "Evolution phase: gathering traces, quirks, and context for analysis..."
 
 ## TDD Red Flags - STOP and Delete Code

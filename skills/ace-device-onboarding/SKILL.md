@@ -116,7 +116,7 @@ Fix failures before marking Phase 5 complete.
 
 ## Phase 6: Evolution & Sharing
 
-**Invoke `ace-superpowers:ace-evolve`** for LLM-driven evolution闭环.
+**Invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
 
 The `ace-evolve` skill will:
 1. Gather context (traces, `CLAUDE_BENCHMARK_STATUS.md` Known Quirks, existing insights)

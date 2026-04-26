@@ -188,7 +188,7 @@ ace node validate <node-id>
 
 ### Phase 6: Evolution & Sharing
 
-**Invoke `ace-superpowers:ace-evolve`** for LLM-driven evolution闭环.
+**Invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
 
 The `ace-evolve` skill will:
 1. Gather context (traces, known quirks, existing insights)
@@ -325,7 +325,7 @@ ace run workflow <workflow-id> --params '<json>'
 - "TDD: Writing failing test for node..."
 - "TDD: Building node to pass test..."
 - "Executing workflow via CLI for reproducibility: ace run workflow <id>..."
-- "Invoking ace-superpowers:ace-evolve for LLM-driven evolution..."
+- "Invoking superpowers:ace-evolve for LLM-driven evolution..."
 - "Pushing execution memory to ace-hub: ace hub push <id> --type workflow --commit"
 
 ## TDD Red Flags - STOP and Delete
