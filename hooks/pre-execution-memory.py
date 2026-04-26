@@ -122,8 +122,8 @@ def _load_memories_for_workflow(workflow_id: str) -> dict:
             if workflow_file.exists():
                 wf_data = json.loads(workflow_file.read_text())
                 device_id = wf_data.get("device")
-        except Exception:
-            pass
+        except Exception as ex:
+            log_hook_error("pre-execution-memory/lookup_workflow_device", ex)
 
         device_memories = []
         device_insights = []
@@ -150,8 +150,9 @@ def _load_memories_for_workflow(workflow_id: str) -> dict:
             "pitfall_count": len([m for m in all_memories if m.type.value == "pitfall"]),
             "warnings": warnings,
         }
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception as ex:
+        log_hook_error("pre-execution-memory/load_workflow", ex)
+        return {"error": str(ex)}
 
 
 def _load_memories_for_device(device_id: str, operation: str = "") -> dict:
@@ -188,8 +189,9 @@ def _load_memories_for_device(device_id: str, operation: str = "") -> dict:
             "pitfall_count": len([m for m in all_memories if m.type.value == "pitfall"]),
             "warnings": warnings,
         }
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception as ex:
+        log_hook_error("pre-execution-memory/load_device", ex)
+        return {"error": str(ex)}
 
 
 def _load_memories_for_node(device_id: str | None, node_id: str | None) -> dict:
@@ -231,8 +233,9 @@ def _load_memories_for_node(device_id: str | None, node_id: str | None) -> dict:
             "pitfall_count": len([m for m in all_memories if m.type.value == "pitfall"]),
             "warnings": warnings,
         }
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception as ex:
+        log_hook_error("pre-execution-memory/load_node", ex)
+        return {"error": str(ex)}
 
 
 def should_inject_memory(command: str) -> tuple[bool, str, dict]:
