@@ -116,7 +116,10 @@ Fix failures before marking Phase 5 complete.
 
 ## Phase 6: Evolution & Sharing
 
-**Invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
+**Before invoking ace-evolve**, write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
+  - Files created, commands run, how to reproduce, Phase-1 answers (verbatim).
+
+**Then invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
 
 The `ace-evolve` skill will:
 1. Gather context (traces, `CLAUDE_BENCHMARK_STATUS.md` Known Quirks, existing insights)
@@ -124,9 +127,6 @@ The `ace-evolve` skill will:
 3. Distill and promote insights (L1→L2→L3→L4)
 4. Apply changes (update CLAUDE.md, create entity memories)
 5. Share to ace-hub (with HITL approval)
-
-**Before invoking ace-evolve**, write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
-  - Files created, commands run, how to reproduce, Phase-1 answers (verbatim).
 
 The ace-evolve skill will read Known Quirks from `CLAUDE_BENCHMARK_STATUS.md`
 and convert them into negative knowledge (L2 insights).
