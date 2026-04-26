@@ -198,6 +198,9 @@ The `ace-evolve` skill will:
 5. Share evolution artifacts to ace-hub (with HITL approval)
 
 **After ace-evolve completes, push built artifacts to ace-hub:**
+
+**HITL gate:** call `AskUserQuestion` before each `ace hub push`.
+
 ```bash
 # Push workflow with memory
 ace hub push <workflow-id> --type workflow --commit
