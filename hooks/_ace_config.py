@@ -80,10 +80,16 @@ CAUSE_PATTERNS: list[tuple[str, str]] = _USER_CONFIG.get(
 )
 
 # ── Evolution Thresholds (configurable via config) ───────────────────
+#
+# Defaults are tuned so evolution actually runs on real sessions. Empirically
+# typical Claude Code sessions produce 3–8 traces; the previous default of
+# `min_traces=15` meant evolution never fired and all the pattern-extraction
+# code was dead. Override via ~/.ace/config.json {"evolution": {...}} for
+# heavier batch sessions where you want fewer, higher-confidence runs.
 
 _evolution_config = _USER_CONFIG.get("evolution", {})
-MIN_TRACES_FOR_EVOLUTION: int = _evolution_config.get("min_traces", 15)
-MIN_HOURS_BETWEEN_EVOLUTIONS: int = _evolution_config.get("min_hours_between", 2)
+MIN_TRACES_FOR_EVOLUTION: int = _evolution_config.get("min_traces", 3)
+MIN_HOURS_BETWEEN_EVOLUTIONS: float = _evolution_config.get("min_hours_between", 0.0)
 CONFIDENCE_THRESHOLD: float = _evolution_config.get("confidence_threshold", 0.3)
 
 
