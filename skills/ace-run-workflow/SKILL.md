@@ -195,7 +195,16 @@ The `ace-evolve` skill will:
 2. Analyze patterns with LLM (PCFL failures, CDSI breakthroughs)
 3. Distill and promote insights (L1→L2→L3→L4)
 4. Apply changes (update CLAUDE.md, create entity memories)
-5. Share to ace-hub (with HITL approval)
+5. Share evolution artifacts to ace-hub (with HITL approval)
+
+**After ace-evolve completes, push built artifacts to ace-hub:**
+```bash
+# Push workflow with memory
+ace hub push <workflow-id> --type workflow --commit
+
+# Push new nodes (if built during this session)
+ace hub push <node-id> --type node
+```
 
 ## Memory Management
 
