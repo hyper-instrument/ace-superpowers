@@ -22,7 +22,7 @@ Use `AskUserQuestion` to collect exactly four answers, **one question per call**
 
 | Gate id     | Question                                                                       |
 |-------------|--------------------------------------------------------------------------------|
-| `task_type` | Build new workflow, run existing, or modify existing?                          |
+| `task_type` | Build new workflow, build new node, run existing, or modify existing?         |
 | `device`    | Which device? (must already exist in `~/.ace/store/devices/` or ace-hub)       |
 | `goal`      | What should the workflow accomplish? (inputs, expected outputs, success criteria)|
 | `params`    | Any special parameters, constraints, or execution preferences?                 |
