@@ -114,12 +114,104 @@ Never modify ACE framework core. Work around limitations in your adapter.
 
 Fix failures before marking Phase 5 complete.
 
-## Phase 6 — Evolution & Sharing
+## Phase 6: Evolution & Sharing
 
-- `ace evolve` to extract patterns.
-- `ace hub push <id> --type device --commit` (**ask first** via `AskUserQuestion`).
-- Write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
+**1. Extract Patterns:**
+```bash
+ace evolve
+```
+
+**2. Push to ace-hub for sharing:**
+```bash
+# Push device with memory
+ace hub push <device-id> --type device --commit
+
+# Push nodes
+ace hub push <node-id> --type node
+
+# Push workflows
+ace hub push <workflow-id> --type workflow --commit
+```
+
+**3. Document in CLAUDE.md (if universal patterns emerge)**
+
+**HITL gate:** call `AskUserQuestion` before each `ace hub push`.
+
+Write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
   - Files created, commands run, how to reproduce, Phase-1 answers (verbatim).
+
+## Reference Templates
+
+**Device adapter layer is thin. Implementation complexity lives in nodes.**
+
+### Device Definition — Standard Pattern
+
+**`device.json`** — Thin capability contract, NOT implementation:
+
+```json
+{
+  "name": "<device-type>/<implementation>",
+  "type": "<DEVICE_TYPE>",
+  "vendor": "<Vendor Name>",
+  "model": "<Model Name>",
+  "version": "1.0.0",
+  "description": "Brief description of the device",
+  "capabilities": [
+    "capability_1",
+    "capability_2",
+    "capability_3"
+  ],
+  "parameters": {
+    "param_group_1": {
+      "range": [min, max],
+      "presets": ["preset1", "preset2"]
+    },
+    "param_group_2": {
+      "options": ["option1", "option2"]
+    }
+  },
+  "connection": {
+    "protocol": "tcp|serial|rest|...",
+    "host": "127.0.0.1",
+    "port": 50000,
+    "authkey": "optional_auth_key"
+  },
+  "has_simulator": true,
+  "simulator_id": "<device-id>-simulator",
+  "simulator": {
+    "source": "local",
+    "simulator_id": "<device-id>-simulator",
+    "speed_multiplier": 10.0
+  },
+  "metadata": {
+    "simulator_class": "<DeviceName>Simulator",
+    "sdk_install": {
+      "method": "pip|local",
+      "package": "git+ssh://... OR /local/path/to/sdk"
+    }
+  }
+}
+```
+
+**Key Principles:**
+- `device.json` is a **capability declaration**, not implementation code
+- Implementation details go in **nodes**, referenced by capabilities
+- SDK configuration in `metadata.sdk_install` (pip URL or local path)
+- Simulator class name in `metadata.simulator_class` (matches device.py)
+
+### Scope Reminder
+
+**Hierarchy:** `devices/<device_type>/<implementation>/`
+- Example: `devices/stm/nanonis/` (hardware), `devices/stm/simulator/` (simulator)
+
+| Layer | Content | Location |
+|-------|---------|----------|
+| Device definition | Capability contract, SDK config | `device.json` (in `<type>/<impl>/`) |
+| Simulator adapter | State management, operation routing | `device.py` (in `<type>/simulator/`) |
+| Operation logic | Complex validation, protocol encoding | **Nodes** |
+| SDK integration | Device-specific API calls | **Nodes** |
+
+**Device adapter is thin. Implementation complexity lives in nodes.**
 
 ## Anti-Patterns — STOP Immediately
 
