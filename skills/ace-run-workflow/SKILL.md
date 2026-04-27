@@ -188,29 +188,26 @@ ace node validate <node-id>
 
 ### Phase 6: Evolution & Sharing
 
-**1. Extract patterns:**
-```bash
-ace evolve
-```
+**Invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
 
-**2. Save execution summary to memory:**
-```bash
-# Results automatically saved to:
-# ~/.ace/store/workflows/<id>/memory/execution_history.json
-```
+The `ace-evolve` skill will:
+1. Gather context (traces, known quirks, existing insights)
+2. Analyze patterns with LLM (PCFL failures, CDSI breakthroughs)
+3. Distill and promote insights (L1→L2→L3→L4)
+4. Apply changes (update CLAUDE.md, create entity memories)
+5. Share evolution artifacts to ace-hub (with HITL approval)
 
-**3. Push to ace-hub for sharing:**
+**After ace-evolve completes, push built artifacts to ace-hub:**
+
+**HITL gate:** call `AskUserQuestion` before each `ace hub push`.
+
 ```bash
 # Push workflow with memory
 ace hub push <workflow-id> --type workflow --commit
 
-# Push new nodes
+# Push new nodes (if built during this session)
 ace hub push <node-id> --type node
 ```
-
-**4. Update insights (if patterns detected):**
-- Promote to `~/.ace/insights/workflow-<id>*.md`
-- Update fitness scores
 
 ## Memory Management
 
@@ -258,7 +255,7 @@ Agent: → Executing via CLI for reproducibility...
 ace run workflow fibsem_acquire_dual_beam
 ```
 → Execution complete. Traces captured.
-→ Running ace evolve to extract patterns...
+→ Invoking ace-evolve skill for LLM-driven evolution...
 ```
 
 ### Example 2: Run Workflow (No Match → Build)
@@ -340,7 +337,7 @@ ace run workflow <workflow-id> --params '<json>'
 - "TDD: Writing failing test for node..."
 - "TDD: Building node to pass test..."
 - "Executing workflow via CLI for reproducibility: ace run workflow <id>..."
-- "Running ace evolve to extract patterns..."
+- "Invoking superpowers:ace-evolve for LLM-driven evolution..."
 - "Pushing execution memory to ace-hub: ace hub push <id> --type workflow --commit"
 
 ## TDD Red Flags - STOP and Delete
