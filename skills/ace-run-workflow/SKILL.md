@@ -11,7 +11,7 @@ with ace-hub sharing and evolution闭环.
 ## Hard rule: do not build before Clarify is complete
 
 **You MUST NOT call `Write`, `Edit`, `Bash` with mutating commands, or any CLI like
-`ace workflow create` / `ace node build` until all Phase-1 Clarify gates below are
+`ace workflow create` / `ace node create` until all Phase-1 Clarify gates below are
 satisfied.** The ONLY tools allowed in Phase 1 are `AskUserQuestion`, `Read`, `Glob`,
 `Grep`, `TodoWrite`, and read-only `Bash` (e.g. `ls`, `cat`, `ace workflow list`).
 If you feel the urge to skip ahead, call `AskUserQuestion` instead.
@@ -76,9 +76,9 @@ Once Phase 1 is approved:
 ## Phase 4 — Execute
 
 **HITL gates — call `AskUserQuestion` before EACH of these CLI operations:**
-- `ace node build` — ask: "Ready to build node. Proceed?"
+- `ace node create` — ask: "Ready to build node. Proceed?"
 - `ace workflow create` — ask: "Ready to create workflow. Proceed?"
-- `ace run workflow` — ask: "Ready to run workflow. Proceed?"
+- `ace workflow run` — ask: "Ready to run workflow. Proceed?"
 - `ace hub push` — ask: "Ready to push to ace-hub. Proceed?"
 
 Do NOT batch these into one confirmation. Each destructive CLI call gets its own
@@ -87,7 +87,7 @@ Do NOT batch these into one confirmation. Each destructive CLI call gets its own
 **If "run workflow" (existing):**
 ```bash
 # MUST use CLI for reproducibility
-ace run workflow <workflow-id> [--params '<json>']
+ace workflow run <workflow-id> [--input '<json>']
 ```
 
 **If "build node" (TDD REQUIRED):**
@@ -98,16 +98,16 @@ ace run workflow <workflow-id> [--params '<json>']
 **If "build workflow":**
 1. Build any missing nodes with TDD (see above).
 2. Compose workflow: `ace workflow create --name <name> --device <device-id> --nodes '<node-list>'`
-3. Execute: `ace run workflow <workflow-id>`
+3. Execute: `ace workflow run <workflow-id>`
 
 **If "modify existing":**
 1. Read and show the current workflow/node definition to the human.
 2. Apply modifications (TDD for node changes).
-3. Re-run: `ace run workflow <workflow-id>` to verify.
+3. Re-run: `ace workflow run <workflow-id>` to verify.
 
 ### Critical Rule
 
-> **Phase 4 "run workflow" MUST use CLI command `ace run workflow <id>` for reproducibility.**
+> **Phase 4 "run workflow" MUST use CLI command `ace workflow run <id>` for reproducibility.**
 > Never call workflow APIs directly in Python — always go through the CLI.
 
 ### Scope Boundary
@@ -128,13 +128,12 @@ Never modify ACE framework core. Work around limitations in your nodes/workflows
 
 1. Check execution results:
    ```bash
-   ace workflow status <execution-id>
    ls ~/.ace/store/run/workflow/<workflow-id>/
    ```
 2. **Show the workflow run output** to the human — paste the full stdout/stderr
    so they can see the result.
 3. Validate workflow structure (if built): `ace workflow validate <workflow-id>`
-4. Validate nodes (if built): `ace node validate <node-id>`
+4. Validate nodes (if built): `ace node info <node-id>`
 
 Fix failures before marking Phase 5 complete.
 
@@ -168,7 +167,7 @@ ace hub push <node-id> --type node
 - Skipping `AskUserQuestion` before destructive CLI calls → STOP, ask first
 - Running `Bash` exploratory commands during Phase 1 without the human's direction → STOP, ask first
 - Starting execution before plan is approved → STOP, present plan first
-- Calling workflow APIs in Python instead of `ace run workflow` → STOP, use CLI
+- Calling workflow APIs in Python instead of `ace workflow run` → STOP, use CLI
 - 100+ tool calls without completion → simplify approach
 
 ### TDD Red Flags — STOP and Delete
