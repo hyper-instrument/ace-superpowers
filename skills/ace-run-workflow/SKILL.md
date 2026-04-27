@@ -140,13 +140,23 @@ Fix failures before marking Phase 5 complete.
 
 ## Phase 6 — Evolution & Sharing
 
-1. **Extract patterns:** `ace evolve`
-2. **Push to ace-hub:**
-   **HITL gate:** call `AskUserQuestion` before each `ace hub push`.
-   ```bash
-   ace hub push <workflow-id> --type workflow --commit
-   ace hub push <node-id> --type node
-   ```
+**Invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
+
+The `ace-evolve` skill will:
+1. Gather context (traces, known quirks, existing insights)
+2. Analyze patterns with LLM (PCFL failures, CDSI breakthroughs)
+3. Distill and promote insights (L1→L2→L3→L4)
+4. Apply changes (update CLAUDE.md, create entity memories)
+5. Share evolution artifacts to ace-hub (with HITL approval)
+
+**After ace-evolve completes, push built artifacts to ace-hub:**
+
+**HITL gate:** call `AskUserQuestion` before each `ace hub push`.
+
+```bash
+ace hub push <workflow-id> --type workflow --commit
+ace hub push <node-id> --type node
+```
 
 Write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
   - Workflow built/run, commands executed, how to reproduce, results summary.

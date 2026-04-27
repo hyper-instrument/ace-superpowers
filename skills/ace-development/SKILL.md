@@ -63,7 +63,7 @@ You MUST create a task for each of these items and complete them in order:
 6. **Invoke superpowers:test-driven-development** — RED: test → GREEN: code → REFACTOR: clean
 7. **Execute plan** — invoke `superpowers:executing-plans` or `superpowers:subagent-driven-development`
 8. **Invoke superpowers:verification-before-completion** — all tests pass, no regressions
-9. **Extract patterns** — `ace evolve` for framework insights
+9. **Invoke superpowers:ace-evolve** — LLM-driven evolution闭环 for framework insights
 10. **Invoke superpowers:finishing-a-development-branch** — merge/PR/cleanup
 
 ## Process Flow
@@ -80,7 +80,7 @@ digraph ace_development {
     "Execute plan" [shape=box];
     "Invoke verification" [shape=box];
     "All tests pass?" [shape=diamond];
-    "Extract patterns (ace evolve)" [shape=box];
+    "Invoke ace-evolve skill" [shape=box];
     "Invoke finishing-a-branch" [shape=doublecircle];
 
     "Clarify improvement goal" -> "Invoke brainstorming";
@@ -94,8 +94,8 @@ digraph ace_development {
     "Execute plan" -> "Invoke verification";
     "Invoke verification" -> "All tests pass?";
     "All tests pass?" -> "Invoke TDD" [label="no, fix"];
-    "All tests pass?" -> "Extract patterns (ace evolve)" [label="yes"];
-    "Extract patterns (ace evolve)" -> "Invoke finishing-a-branch";
+    "All tests pass?" -> "Invoke ace-evolve skill" [label="yes"];
+    "Invoke ace-evolve skill" -> "Invoke finishing-a-branch";
 }
 ```
 
@@ -178,12 +178,14 @@ ace sandbox test <test_pattern>
 
 ### Phase 6: Evolution闭环 (ACE)
 
-**ACE Evolution Integration**
-- Execution produces traces at `~/.ace/traces/`
-- Run: `ace evolve`
-- Create/update insights from development traces
-- If patterns detected → promote to L2 insights
-- Update CLAUDE.md if principles emerge
+**Invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
+
+The `ace-evolve` skill will:
+1. Gather context (traces from `~/.ace/traces/`, known quirks, existing insights, recent changes)
+2. Analyze patterns with LLM (PCFL failures, CDSI breakthroughs)
+3. Distill and promote insights (L1→L2→L3→L4)
+4. Apply changes (update CLAUDE.md with user approval, create entity memories)
+5. Share to ace-hub (with HITL approval)
 
 ### Phase 7: Complete (Superpowers)
 
@@ -198,7 +200,7 @@ ace sandbox test <test_pattern>
 - Plans: docs/superpowers/plans/YYYY-MM-DD-<feature>-plan.md
 - Traces: ~/.ace/traces/ (auto-generated)
 - Insights: ~/.ace/insights/ (auto-generated)
-- Evolution: Run `ace evolve` after completion to extract patterns
+- Evolution: Invoke `superpowers:ace-evolve` after completion for LLM-driven evolution
 
 ## Key Principles
 
@@ -211,7 +213,7 @@ ace sandbox test <test_pattern>
 **From ACE:**
 - ACE evolution for learning from development traces
 - Both frameworks complement each other
-- Run `ace evolve` after development to extract patterns from traces
+- Invoke `superpowers:ace-evolve` after development for LLM-driven evolution闭环
 
 ## Canonical Statements
 
@@ -222,8 +224,8 @@ ace sandbox test <test_pattern>
 - "GREEN: Writing minimal code to pass..."
 - "REFACTOR: Cleaning up while tests stay green..."
 - "Execution phase: invoking superpowers:executing-plans..."
-- "Evolution phase: extracting patterns from development traces..."
-- "Evolution phase: running ace evolve to extract patterns..."
+- "Evolution phase: invoking superpowers:ace-evolve for LLM-driven evolution..."
+- "Evolution phase: gathering traces, quirks, and context for analysis..."
 
 ## TDD Red Flags - STOP and Delete Code
 

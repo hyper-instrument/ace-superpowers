@@ -116,12 +116,25 @@ Fix failures before marking Phase 5 complete.
 
 ## Phase 6: Evolution & Sharing
 
-**1. Extract Patterns:**
-```bash
-ace evolve
-```
+**Before invoking ace-evolve**, write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
+  - Files created, commands run, how to reproduce, Phase-1 answers (verbatim).
 
-**2. Push to ace-hub for sharing:**
+**Then invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
+
+The `ace-evolve` skill will:
+1. Gather context (traces, `CLAUDE_BENCHMARK_STATUS.md` Known Quirks, existing insights)
+2. Analyze patterns with LLM (PCFL failures, CDSI breakthroughs)
+3. Distill and promote insights (L1→L2→L3→L4)
+4. Apply changes (update CLAUDE.md, create entity memories)
+5. Share evolution artifacts to ace-hub (with HITL approval)
+
+The ace-evolve skill will read Known Quirks from `CLAUDE_BENCHMARK_STATUS.md`
+and convert them into negative knowledge (L2 insights).
+
+**After ace-evolve completes, push onboarded artifacts to ace-hub:**
+
+**HITL gate:** call `AskUserQuestion` before each `ace hub push`.
+
 ```bash
 # Push device with memory
 ace hub push <device-id> --type device --commit
@@ -132,13 +145,6 @@ ace hub push <node-id> --type node
 # Push workflows
 ace hub push <workflow-id> --type workflow --commit
 ```
-
-**3. Document in CLAUDE.md (if universal patterns emerge)**
-
-**HITL gate:** call `AskUserQuestion` before each `ace hub push`.
-
-Write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
-  - Files created, commands run, how to reproduce, Phase-1 answers (verbatim).
 
 ## Reference Templates
 
