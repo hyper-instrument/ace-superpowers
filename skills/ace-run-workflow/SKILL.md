@@ -60,7 +60,15 @@ Once Phase 1 is approved:
 
 ## Phase 3 — Plan (structured planning)
 
-1. **Write a task list** via `TodoWrite` enumerating concrete tasks for Phases 4–6.
+1. **Query existing memory** for the target workflow/device before planning:
+   ```bash
+   ls ~/.ace/store/workflows/<workflow-id>/memory/ 2>/dev/null
+   ls ~/.ace/store/devices/<device-id>/memory/ 2>/dev/null
+   ```
+   If memory exists (e.g. `execution_history.json`, `best_params.json`,
+   `common_failures.md`), read it and incorporate lessons into the plan.
+
+2. **Write a task list** via `TodoWrite` enumerating concrete tasks for Phases 4–6.
    Typical breakdown:
    - Check node availability, build missing nodes (TDD)
    - Compose workflow definition
@@ -68,7 +76,7 @@ Once Phase 1 is approved:
    - Verify results
    - Evolution & sharing
 
-2. **Present the plan** to the human via `AskUserQuestion` and **wait for explicit
+3. **Present the plan** to the human via `AskUserQuestion` and **wait for explicit
    approval** before starting any execution work.
 
 **Do NOT start Phase 4 until the human has approved the plan.**
@@ -159,6 +167,22 @@ The `ace-evolve` skill will:
 ace hub push <workflow-id> --type workflow --commit
 ace hub push <node-id> --type node
 ```
+
+## Memory Management
+
+Memory is automatically synced between local store and ace-hub:
+
+| Memory Type | Local Path | Hub Path | Sync Command |
+|------------|------------|----------|--------------|
+| Workflow Memory | `~/.ace/store/workflows/<id>/memory/` | `ace-hub/workflows/<id>/memory/` | `ace hub pull/push` |
+| Node Memory | `~/.ace/store/nodes/<id>/memory/` | `ace-hub/nodes/<id>/memory/` | `ace hub pull/push` |
+| Device Memory | `~/.ace/store/devices/<id>/memory/` | `ace-hub/devices/<id>/memory/` | `ace hub pull/push` |
+
+**Memory folder contents:**
+- `execution_history.json` - Past executions with params and results
+- `best_params.json` - Optimized parameter combinations
+- `common_failures.md` - Known issues and solutions
+- `optimization_tips.md` - Performance recommendations
 
 ## Anti-Patterns — STOP Immediately
 
