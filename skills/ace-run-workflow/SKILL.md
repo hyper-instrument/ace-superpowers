@@ -1,197 +1,159 @@
 ---
-description: "ACE Paradigm 1: Build and run workflows with evolution闭环 and ace-hub sharing"
+name: ace-run-workflow
+description: "ACE Paradigm 1: Build and run workflows on existing devices. Enforces Clarify → Design → Plan → Execute → Verify → Share."
 ---
 
-# ACE Paradigm 1 - Run Workflow
+# ACE Paradigm 1 — Run / Build Workflow
 
-Build, compose, and execute workflows/nodes using existing device abstractions with ace-hub sharing.
-Inspired by superpowers philosophy: design → verify → evolve → share.
+Build, compose, and execute workflows/nodes using existing device abstractions,
+with ace-hub sharing and evolution闭环.
 
-## When to Use
+## Hard rule: do not build before Clarify is complete
 
-- User wants to **build** workflows or nodes
-- User wants to **run** workflows on existing devices
-- User wants to **compose** nodes into pipelines
-- Device definitions already exist in `~/.ace/store/devices/` or ace-hub
-- Want to share workflows with team via ace-hub
+**You MUST NOT call `Write`, `Edit`, `Bash` with mutating commands, or any CLI like
+`ace workflow create` / `ace node create` until all Phase-1 Clarify gates below are
+satisfied.** The ONLY tools allowed in Phase 1 are `AskUserQuestion`, `Read`, `Glob`,
+`Grep`, `TodoWrite`, and read-only `Bash` (e.g. `ls`, `cat`, `ace workflow list`).
+If you feel the urge to skip ahead, call `AskUserQuestion` instead.
 
-## Key Principles
+## Phase 1 — Clarify (gather, don't build)
 
-**From Superpowers:**
-- Clarify before building (one question at a time)
-- Confirm before executing (is this what you want?)
-- Verify at each step (type checking, validation)
-- Iterate on failure (don't just fail, fix)
-- **TDD for node building**: When creating new nodes, write test first, then build node to pass test
+Use `AskUserQuestion` to collect exactly four answers, **one question per call**:
 
-**From ACE:**
-- Accumulate: Every execution → traces
-- Composable: Nodes connect via typed ports
-- Evolve: Insights have fitness, fit survives
-- Share: Push to ace-hub for team collaboration
+| Gate id     | Question                                                                       |
+|-------------|--------------------------------------------------------------------------------|
+| `task_type` | Build new workflow, build new node, run existing, or modify existing?         |
+| `device`    | Which device? (must already exist in `~/.ace/store/devices/` or ace-hub)       |
+| `goal`      | What should the workflow accomplish? (inputs, expected outputs, success criteria)|
+| `params`    | Any special parameters, constraints, or execution preferences?                 |
 
-**Critical Rule:**
-> **Phase 4 (Execute) for "run workflow" MUST use CLI command `ace run workflow <id>` for reproducibility.**
+Rules:
+- Ask **one question at a time** via `AskUserQuestion`. Do not batch.
+- After each answer, acknowledge briefly (one line) and immediately ask the next gate.
+- If the human says "just do it" / "you decide" — still collect all four answers,
+  but accept short ones. Do not skip any gate.
+- You may use `Read` / `Glob` / `Grep` and read-only `Bash` to inspect existing
+  resources **only when the human explicitly points you at something** in their answer.
+- **Each gate MUST use `AskUserQuestion`** — do not infer answers from context or skip gates.
 
-## 6-Phase Workflow
+When all four gates are collected, summarise the answers back to the human in one
+short message and explicitly ask for approval to move to Phase 2.
 
-### Phase 1: Clarify Intent
+## Phase 2 — Design (brainstorming + spec)
 
-Understand what user wants:
-- Build new workflow/node?
-- Run existing workflow?
-- Modify existing workflow/node?
-- Which device?
+Once Phase 1 is approved:
 
-**Search existing resources:**
-```bash
-# Search ace-hub
-ace hub list --type workflows
-ace hub list --type workflows --device <device-id>
-
-# Search local
-ace workflow list
-ace workflow list --device <device-id>
-```
-
-### Phase 2: Design
-
-**Invoke superpowers:brainstorming**
-
-**If "run workflow":**
-1. Show matching workflows from hub + local
-2. Confirm with user: "Is this the workflow you want to run?"
-3. Pull workflow memory if on hub:
+1. **Search existing resources**:
    ```bash
-   ace hub pull <workflow-id> --type workflow
+   ace hub list --type workflows
+   ace workflow list
+   ace node list --device <device-id>
    ```
-4. If NO match → switch to "build" mode
+2. **If "run workflow"** — show matching workflows, call `AskUserQuestion` to confirm choice.
+   Pull from hub if needed: `ace hub pull <workflow-id> --type workflow`.
+   If no match, switch to "build" mode.
+3. **If "build workflow"** — propose **2 or 3** workflow topologies with node compositions.
+   Call `AskUserQuestion` for the human to choose.
+4. **If "build node"** — define input/output ports (JSON Schema), get approval.
+5. **If "modify existing"** — show current workflow/node, identify what to change,
+   call `AskUserQuestion` to confirm modification scope.
 
-**If "build workflow":**
-1. Explore existing nodes: `ace node list --device <device-id>`
-2. Check device capabilities from SKILL.md
-3. Propose 2-3 workflow topologies
-4. Get user approval
+## Phase 3 — Plan (structured planning)
 
-**If "build node":**
-1. Check device capabilities
-2. Define input/output ports (JSON Schema)
-3. Define prep/exec/post structure
-4. Get user approval
+1. **Query existing memory** for the target workflow/device before planning:
+   ```bash
+   ls ~/.ace/store/workflows/<workflow-id>/memory/ 2>/dev/null
+   ls ~/.ace/store/devices/<device-id>/memory/ 2>/dev/null
+   ```
+   If memory exists (e.g. `execution_history.json`, `best_params.json`,
+   `common_failures.md`), read it and incorporate lessons into the plan.
 
-### Phase 3: Plan
+2. **Write a task list** via `TodoWrite` enumerating concrete tasks for Phases 4–6.
+   Typical breakdown:
+   - Check node availability, build missing nodes (TDD)
+   - Compose workflow definition
+   - Execute workflow via CLI
+   - Verify results
+   - Evolution & sharing
 
-**Invoke superpowers:writing-plans**
+3. **Present the plan** to the human via `AskUserQuestion` and **wait for explicit
+   approval** before starting any execution work.
 
-**If "run workflow":**
-- Check prerequisites (device connected, params valid)
-- Load best params from memory if available:
-  ```bash
-  cat ~/.ace/store/workflows/<id>/memory/best_params.json
-  ```
+**Do NOT start Phase 4 until the human has approved the plan.**
 
-**If "build workflow":**
-- List required node types
-- Check node availability: `ace node list`
-- If missing nodes → plan node building first with TDD
+## Phase 4 — Execute
 
-**If "build node":**
-- Plan node structure
-- **Prepare TDD test strategy** - Write test BEFORE code
-- Define expected input/output for tests
+**HITL gates — call `AskUserQuestion` before EACH of these CLI operations:**
+- `ace node create` — ask: "Ready to build node. Proceed?"
+- `ace workflow create` — ask: "Ready to create workflow. Proceed?"
+- `ace workflow run` — ask: "Ready to run workflow. Proceed?"
+- `ace hub push` — ask: "Ready to push to ace-hub. Proceed?"
 
-### Phase 4: Execute
+Do NOT batch these into one confirmation. Each destructive CLI call gets its own
+`AskUserQuestion` gate.
 
-**If "run workflow" (NO TDD needed - just run):**
+**If "run workflow" (existing):**
 ```bash
 # MUST use CLI for reproducibility
-ace run workflow <workflow-id> [--params '<json>']
-
-# Example:
-ace run workflow fibsem_acquire_dual_beam --params '{"resolution": "1024x768"}'
+ace workflow run <workflow-id> [--input '<json>']
 ```
 
 **If "build node" (TDD REQUIRED):**
-
-**RED - Write Failing Test:**
-```bash
-# Create test FIRST - node doesn't exist yet
-ace node test --create <node-id>_test.py --description "<operation description>"
-# Verify test FAILS (expected - node not implemented)
-ace sandbox test <node-id>_test.py
-```
-
-**GREEN - Build Node to Pass Test:**
-```bash
-# Build node to make test pass
-ace node build --device <device-id> --description "<operation description>"
-# Verify test PASSES
-ace sandbox test <node-id>_test.py
-```
-
-**REFACTOR - Clean Up:**
-```bash
-# Improve node while test stays green
-ace node validate <node-id>
-ace sandbox test <node-id>_test.py  # Must still pass
-```
+1. RED — write a failing test first.
+2. GREEN — minimum code to pass.
+3. REFACTOR — clean up, test stays green.
 
 **If "build workflow":**
-```bash
-# First: Build any missing nodes with TDD (see above)
-# Then: Create workflow from nodes
-ace workflow create --name <name> --device <device-id> --nodes '<node-list>'
+1. Build any missing nodes with TDD (see above).
+2. Compose workflow: `ace workflow create --name <name> --device <device-id> --nodes '<node-list>'`
+3. Execute: `ace workflow run <workflow-id>`
 
-# Or build from natural language
-ace workflow build --description "acquire dual beam images" --device fibsem
-```
+**If "modify existing":**
+1. Read and show the current workflow/node definition to the human.
+2. Apply modifications (TDD for node changes).
+3. Re-run: `ace workflow run <workflow-id>` to verify.
 
-**If missing nodes detected (TDD for each):**
-```bash
-# RED: Write failing test for missing node
-ace node test --create <missing-node>_test.py --description "custom scan pattern"
-ace sandbox test <missing-node>_test.py  # Must fail
+### Critical Rule
 
-# GREEN: Build node to pass test
-ace node build --device <device-id> --description "custom scan pattern"
-ace sandbox test <missing-node>_test.py  # Must pass
+> **Phase 4 "run workflow" MUST use CLI command `ace workflow run <id>` for reproducibility.**
+> Never call workflow APIs directly in Python — always go through the CLI.
 
-# Then retry workflow
-ace run workflow <workflow-id>
-```
+### Scope Boundary
 
-### Phase 5: Verify
+Workflow building creates artifacts in `~/.ace/store/`:
+- `nodes/<device-id>/<node_id>/` — node implementations
+- `workflows/` — workflow definitions
 
-**Invoke superpowers:verification-before-completion**
+Never modify ACE framework core. Work around limitations in your nodes/workflows.
 
-**Check execution results:**
-```bash
-# Check status
-ace workflow status <execution-id>
+### Efficiency
 
-# View results
-ls ~/.ace/store/run/workflow/<workflow-id>/
+- Don't loop on `Bash` for debugging — read error messages and fix in one pass.
+- Don't create excessive tasks. 5–10 `TodoWrite` items is ideal.
+- Keep tool calls minimal: aim for < 100 total tool calls.
 
-# Check output files
-ls ~/.ace/store/run/workflow/<workflow-id>/<execution-id>/
-```
+## Phase 5 — Verify (verification before completion)
 
-**Validate workflow structure (if built):**
-```bash
-ace workflow validate <workflow-id>
-```
+1. Check execution results:
+   ```bash
+   ls ~/.ace/store/run/workflow/<workflow-id>/
+   ```
+2. **Show the workflow run output** to the human — paste the full stdout/stderr
+   so they can see the result.
+3. Validate workflow structure (if built): `ace workflow validate <workflow-id>`
+4. Validate nodes (if built): `ace node info <node-id>`
 
-**Validate nodes (if built):**
-```bash
-ace node validate <node-id>
-```
+Fix failures before marking Phase 5 complete.
 
-### Phase 6: Evolution & Sharing
+## Phase 6 — Evolution & Sharing
 
-**Invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
+**Before invoking ace-evolve**, write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
+  - Workflow built/run, commands executed, how to reproduce, results summary.
+
+**Then invoke `superpowers:ace-evolve`** for LLM-driven evolution闭环.
 
 The `ace-evolve` skill will:
-1. Gather context (traces, known quirks, existing insights)
+1. Gather context (traces, `CLAUDE_BENCHMARK_STATUS.md` Known Quirks, existing insights)
 2. Analyze patterns with LLM (PCFL failures, CDSI breakthroughs)
 3. Distill and promote insights (L1→L2→L3→L4)
 4. Apply changes (update CLAUDE.md, create entity memories)
@@ -202,10 +164,7 @@ The `ace-evolve` skill will:
 **HITL gate:** call `AskUserQuestion` before each `ace hub push`.
 
 ```bash
-# Push workflow with memory
 ace hub push <workflow-id> --type workflow --commit
-
-# Push new nodes (if built during this session)
 ace hub push <node-id> --type node
 ```
 
@@ -225,122 +184,17 @@ Memory is automatically synced between local store and ace-hub:
 - `common_failures.md` - Known issues and solutions
 - `optimization_tips.md` - Performance recommendations
 
-## Interaction Flow Examples
+## Anti-Patterns — STOP Immediately
 
-### Example 1: Run Workflow (Match Found)
+- Writing code before all 4 Clarify gates → STOP, go back to Phase 1
+- Skipping `AskUserQuestion` for a gate → STOP, ask now
+- Skipping `AskUserQuestion` before destructive CLI calls → STOP, ask first
+- Running `Bash` exploratory commands during Phase 1 without the human's direction → STOP, ask first
+- Starting execution before plan is approved → STOP, present plan first
+- Calling workflow APIs in Python instead of `ace workflow run` → STOP, use CLI
+- 100+ tool calls without completion → simplify approach
 
-```
-User: /ace run workflow for image acquisition
-
-Agent: → Searching ace-hub and local store...
-```bash
-ace hub list --type workflows
-ace workflow list
-```
-→ Found 2 workflows:
-  1. fibsem_acquire_dual_beam - Dual beam image acquisition
-  2. tem_high_throughput - TEM high throughput imaging
-
-→ Pulling workflow memory from hub...
-```bash
-ace hub pull fibsem_acquire_dual_beam --type workflow
-```
-
-→ Is #1 what you need? (Y/n/details)
-
-User: Y
-
-Agent: → Executing via CLI for reproducibility...
-```bash
-ace run workflow fibsem_acquire_dual_beam
-```
-→ Execution complete. Traces captured.
-→ Invoking ace-evolve skill for LLM-driven evolution...
-```
-
-### Example 2: Run Workflow (No Match → Build)
-
-```
-User: /ace run workflow for my custom experiment
-
-Agent: → No matching workflow found locally or on ace-hub.
-→ Let's build one. What device are you using?
-
-[Build workflow flow...]
-
-Agent: → Building workflow...
-```bash
-ace workflow build --description "custom experiment" --device <device-id>
-```
-
-→ Workflow built. Now executing via CLI...
-```bash
-ace run workflow <new-workflow-id>
-```
-```
-
-### Example 3: Run Workflow (Missing Nodes)
-
-```
-User: /ace build workflow for STM scanning
-
-Agent: → Design: STM raster scan with grid resolution
-→ Required nodes:
-  ✓ stm_connect (exists)
-  ✓ stm_set_bias (exists)
-  ✗ stm_custom_scan (missing)
-
-→ Node stm_custom_scan doesn't exist. Building it now...
-```bash
-ace node build --device stm --description "custom scan pattern"
-```
-
-→ Node built. Pushing to hub...
-```bash
-ace hub push stm_custom_scan --type node
-```
-
-→ Continuing workflow composition...
-```bash
-ace workflow create --nodes "stm_connect,stm_set_bias,stm_custom_scan"
-ace run workflow <workflow-id>
-```
-```
-
-## Reproducibility Guarantee
-
-**Why CLI execution is required:**
-
-1. **Recorded Execution**: `ace run workflow` saves full context to `~/.ace/store/run/workflow/<id>/`
-2. **Version Control**: Execution params, ace version, timestamp all recorded
-3. **Reproducible**: Same command produces same results (deterministic workflows)
-4. **Traceable**: Every execution captured in traces for analysis
-
-**Never do this:**
-```python
-# BAD - Direct API call, not reproducible
-result = workflow_engine.execute(workflow_def)
-```
-
-**Always do this:**
-```bash
-# GOOD - CLI execution, fully reproducible
-ace run workflow <workflow-id> --params '<json>'
-```
-
-## Canonical Statements
-
-- "Let me search ace-hub and local store for matching workflows..."
-- "Pulling workflow memory from ace-hub..."
-- "Is this the workflow you want to run?"
-- "Missing nodes detected. Building with TDD..."
-- "TDD: Writing failing test for node..."
-- "TDD: Building node to pass test..."
-- "Executing workflow via CLI for reproducibility: ace run workflow <id>..."
-- "Invoking superpowers:ace-evolve for LLM-driven evolution..."
-- "Pushing execution memory to ace-hub: ace hub push <id> --type workflow --commit"
-
-## TDD Red Flags - STOP and Delete
+### TDD Red Flags — STOP and Delete
 
 - Node code written before test → Delete and start over
 - Test passes immediately → Fix test, must fail first
