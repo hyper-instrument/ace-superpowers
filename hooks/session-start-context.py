@@ -8,10 +8,12 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 # Import shared config (relative import via sys.path)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _ace_config import (
+    ACE_DIR,
     ACE_ROOT,
     INSIGHT_DIR,
     TRACE_DIR,
@@ -83,6 +85,12 @@ def main():
             "Run tests or workflows to start accumulating data.",
             file=sys.stderr,
         )
+        # Still surface any pending/completed auto-test results — those
+        # are independent of trace accumulation.
+        try:
+            _surface_auto_test_results()
+        except Exception as ex:
+            log_hook_error("session-start-context/auto-test", ex)
         sys.exit(0)
 
     summary_parts = []
@@ -108,7 +116,51 @@ def main():
         pass  # Non-critical, ignore errors
     # ────────────────────────────────────────────────────────────────
 
+    # ── Surface completed auto-test results from previous session ────
+    try:
+        _surface_auto_test_results()
+    except Exception as ex:
+        log_hook_error("session-start-context/auto-test", ex)
+    # ────────────────────────────────────────────────────────────────
+
     sys.exit(0)
+
+
+def _surface_auto_test_results() -> None:
+    """Print [ACE] Auto-test summary if there are completed/pending runs.
+
+    Reads ~/.ace/.auto_test_results/*.json (written by detached test
+    runs dispatched from post-tool-auto-test) and prints a one-line
+    summary to stderr so it shows up in the CC session context.
+    Consumes the result files (one-shot surfacing).
+    """
+    if ACE_DIR is None:
+        return
+
+    results_dir = ACE_DIR / ".auto_test_results"
+    pending_dir = ACE_DIR / ".auto_test_pending"
+
+    msgs: list[str] = []
+    if results_dir.exists():
+        for r in sorted(results_dir.glob("*.json")):
+            try:
+                info = json.loads(r.read_text())
+                tag = "✓" if info.get("rc") == 0 else "✗"
+                eid = f"{info.get('entity_type', '?')}/{info.get('entity_id', r.stem)}"
+                msgs.append(f"{tag} {eid}")
+                r.unlink()  # consume
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    pending: list[Path] = []
+    if pending_dir.exists():
+        pending = list(pending_dir.glob("*.json"))
+
+    if pending:
+        msgs.append(f"({len(pending)} in progress)")
+
+    if msgs:
+        print(f"[ACE] Auto-test: {' | '.join(msgs)}", file=sys.stderr)
 
 
 def _load_recent_memories() -> str:
