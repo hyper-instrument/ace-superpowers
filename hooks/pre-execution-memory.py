@@ -305,62 +305,63 @@ def format_memory_message(entity_type: str, context: dict, memory_data: dict) ->
     return "\n".join(lines)
 
 
+def handle(data: dict) -> int:
+    """Process a PostToolUse(Bash) payload for memory injection.
+
+    Returns 0 on success. Catches all exceptions internally so the
+    merged dispatcher (post-tool-bash.py) can safely call this
+    alongside other handlers.
+    """
+    try:
+        # Ensure ACE_ROOT is in path for src imports (deferred to where it's needed)
+        if ACE_ROOT and ACE_ROOT not in sys.path:
+            sys.path.insert(0, ACE_ROOT)
+
+        tool_name = data.get("tool_name", "")
+        tool_input = data.get("tool_input", {})
+        tool_result = data.get("tool_result", {})
+
+        if tool_name != "Bash":
+            return 0
+
+        command = tool_input.get("command", "")
+        exit_code = tool_result.get("exit_code", -1)
+
+        # Only process successful commands.
+        if exit_code != 0:
+            return 0
+
+        should_inject, entity_type, context = should_inject_memory(command)
+        if not should_inject:
+            return 0
+
+        if entity_type == "workflow":
+            memory_data = _load_memories_for_workflow(context.get("workflow_id", ""))
+        elif entity_type == "node":
+            memory_data = _load_memories_for_node(
+                context.get("device_id"), context.get("node_id")
+            )
+        elif entity_type == "device":
+            memory_data = _load_memories_for_device(context.get("device_id", ""))
+        else:
+            return 0
+
+        message = format_memory_message(entity_type, context, memory_data)
+        if message:
+            print(json.dumps({"systemMessage": message}))
+    except Exception as ex:
+        log_hook_error("pre-execution-memory", ex)
+    return 0
+
+
 def main():
     """Main entry point - reads PostToolUse data from stdin."""
-    # Ensure ACE_ROOT is in path for src imports
-    if ACE_ROOT:
-        sys.path.insert(0, ACE_ROOT)
-
     try:
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, EOFError):
         sys.exit(0)
-
-    tool_name = data.get("tool_name", "")
-    tool_input = data.get("tool_input", {})
-    tool_result = data.get("tool_result", {})
-
-    # Only process successful Bash commands
-    if tool_name != "Bash":
-        sys.exit(0)
-
-    command = tool_input.get("command", "")
-    exit_code = tool_result.get("exit_code", -1)
-
-    # Only process successful commands (exit 0)
-    if exit_code != 0:
-        sys.exit(0)
-
-    # Check if this command triggers memory injection
-    should_inject, entity_type, context = should_inject_memory(command)
-
-    if not should_inject:
-        sys.exit(0)
-
-    # Load memories based on entity type
-    if entity_type == "workflow":
-        memory_data = _load_memories_for_workflow(context.get("workflow_id", ""))
-    elif entity_type == "node":
-        memory_data = _load_memories_for_node(
-            context.get("device_id"), context.get("node_id")
-        )
-    elif entity_type == "device":
-        memory_data = _load_memories_for_device(context.get("device_id", ""))
-    else:
-        sys.exit(0)
-
-    # Format and output message
-    message = format_memory_message(entity_type, context, memory_data)
-
-    if message:
-        print(json.dumps({"systemMessage": message}))
-
-    sys.exit(0)
+    sys.exit(handle(data))
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        log_hook_error("pre-execution-memory", e)
-        sys.exit(0)
+    main()
