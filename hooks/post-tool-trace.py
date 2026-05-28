@@ -24,7 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ACE_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", "")
-_ACE_HOME = Path.home() / ".ace"
+_ACE_HOME_OVERRIDE = os.environ.get("ACE_HOME", "")
+_ACE_HOME = Path(_ACE_HOME_OVERRIDE).expanduser() if _ACE_HOME_OVERRIDE else Path.home() / ".ace"
 TRACE_DIR = _ACE_HOME / "traces"
 INSIGHT_DIR = _ACE_HOME / "insights"
 SESSION_FAILURES_FILE = _ACE_HOME / ".session_failures.json"
@@ -421,36 +422,52 @@ def write_blocker_insight(trace: dict) -> None:
                 f.write("\n" + entry + "\n\n")
 
 
+def handle(data: dict) -> int:
+    """Process a PostToolUse(Bash) payload. Returns 0 on success.
+
+    Catches all exceptions internally so the merged dispatcher
+    (post-tool-bash.py) can safely call this alongside other handlers.
+    """
+    try:
+        trace_type = should_trace(
+            data.get("tool_name", ""),
+            data.get("tool_input", {}),
+            data.get("tool_result", {}),
+        )
+
+        if trace_type == "failure":
+            trace = extract_failure_trace(data)
+            append_trace(trace)
+            print(json.dumps({
+                "systemMessage": f"[ACE] Error traced: {trace['entity_type']}/{trace['entity_id']} — {trace['cause']}"
+            }))
+        elif trace_type == "eureka":
+            trace = extract_eureka_trace(data)
+            append_trace(trace)
+            n = trace["prior_failure_count"]
+            print(json.dumps({
+                "systemMessage": (
+                    f"[ACE] Eureka! {trace['entity_type']}/{trace['entity_id']} "
+                    f"succeeded after {n} attempt{'s' if n > 1 else ''} — {trace['insight']}"
+                )
+            }))
+    except Exception as ex:
+        # Lazy import — _ace_config may not be on sys.path when called via dispatcher
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from _ace_config import log_hook_error
+            log_hook_error("post-tool-trace", ex)
+        except Exception:
+            print(f"[ACE] post-tool-trace error: {ex}", file=sys.stderr)
+    return 0
+
+
 def main():
     try:
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, EOFError):
         sys.exit(0)
-
-    trace_type = should_trace(
-        data.get("tool_name", ""),
-        data.get("tool_input", {}),
-        data.get("tool_result", {}),
-    )
-
-    if trace_type == "failure":
-        trace = extract_failure_trace(data)
-        append_trace(trace)
-        print(json.dumps({
-            "systemMessage": f"[ACE] Error traced: {trace['entity_type']}/{trace['entity_id']} — {trace['cause']}"
-        }))
-    elif trace_type == "eureka":
-        trace = extract_eureka_trace(data)
-        append_trace(trace)
-        n = trace["prior_failure_count"]
-        print(json.dumps({
-            "systemMessage": (
-                f"[ACE] Eureka! {trace['entity_type']}/{trace['entity_id']} "
-                f"succeeded after {n} attempt{'s' if n > 1 else ''} — {trace['insight']}"
-            )
-        }))
-
-    sys.exit(0)
+    sys.exit(handle(data))
 
 
 if __name__ == "__main__":

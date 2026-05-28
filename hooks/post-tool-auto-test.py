@@ -1,122 +1,160 @@
 #!/usr/bin/env python3
-"""Auto-test hook - 检测 ~/.ace/store/ 变动并自动运行相关测试
+"""Auto-test hook — detect ~/.ace/store/ changes, dispatch tests asynchronously.
 
-触发时机：PostToolUse (Edit/Write/Bash)
-功能：当 node/device/workflow 被修改后，自动运行对应的测试
+Triggered: PostToolUse(Edit|Write).
+When a node/device/workflow file is modified, this hook spawns
+`ace test run` as a *detached* background process and writes a marker
+file to ~/.ace/.auto_test_pending/. The hook itself returns
+immediately so Claude Code never blocks on test execution.
+
+When tests finish, the wrapper writes the result to
+~/.ace/.auto_test_results/ and removes the pending marker.
+session-start-context.py surfaces completed results in the next
+CC session.
 """
-
 import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
-
-def get_store_dir():
-    """获取 ACE store 目录"""
-    return Path.home() / ".ace" / "store"
+_ACE_HOME_OVERRIDE = os.environ.get("ACE_HOME", "")
+_ACE_HOME = (
+    Path(_ACE_HOME_OVERRIDE).expanduser()
+    if _ACE_HOME_OVERRIDE
+    else Path.home() / ".ace"
+)
+_STORE = _ACE_HOME / "store"
+_PENDING = _ACE_HOME / ".auto_test_pending"
+_RESULTS = _ACE_HOME / ".auto_test_results"
 
 
 def detect_changed_entities(tool_name: str, result: dict) -> list:
-    """从 tool 结果中检测修改的 entity
-
-    Returns:
-        List of (entity_type, entity_id) tuples
-    """
-    store_dir = get_store_dir()
-    changed = set()
-
-    # 获取修改的文件路径
-    file_paths = []
+    """Detect (entity_type, entity_id) tuples from a tool result."""
+    changed: set[tuple[str, str]] = set()
+    file_paths: list[str] = []
 
     if tool_name in ("Edit", "Write"):
-        # 从 result 中提取 file_path
         if "file_path" in result:
             file_paths.append(result["file_path"])
-    elif tool_name == "Bash":
-        # Bash 命令可能修改文件，通过 stdout/stderr 很难确定
-        # 这里可以检查常见的修改命令，但暂时跳过
-        pass
+
+    # Resolve _STORE too so symlinked roots (e.g. /tmp → /private/tmp on
+    # macOS) don't make `relative_to` spuriously fail.
+    try:
+        store_resolved = _STORE.resolve()
+    except (OSError, RuntimeError):
+        store_resolved = _STORE
 
     for path_str in file_paths:
         path = Path(path_str).resolve()
-
-        # 检查是否在 store 目录下
         try:
-            rel_path = path.relative_to(store_dir)
+            rel = path.relative_to(store_resolved)
         except ValueError:
             continue
 
-        # 解析路径结构
-        parts = rel_path.parts
+        parts = rel.parts
         if len(parts) < 2:
             continue
 
         entity_type = parts[0]  # nodes, devices, workflows
-        entity_id = None
+        entity_id: str | None = None
 
         if entity_type == "nodes":
-            # ~/.ace/store/nodes/{*|builtin}/{node_id}/...
             if len(parts) >= 3:
                 entity_id = parts[2]
         elif entity_type == "devices":
-            # ~/.ace/store/devices/{device_id}/...
             entity_id = parts[1]
         elif entity_type == "workflows":
-            # ~/.ace/store/workflows/{workflow_id}/... 或 {workflow_id}.json
-            wf_part = parts[1]
-            if wf_part.endswith(".json"):
-                entity_id = wf_part[:-5]  # 去掉 .json
-            else:
-                entity_id = wf_part
+            wf = parts[1]
+            entity_id = wf[:-5] if wf.endswith(".json") else wf
 
         if entity_id:
-            # 标准化 entity_type
             if entity_type == "workflows":
                 entity_type = "workflow"
             elif entity_type == "nodes":
                 entity_type = "node"
             elif entity_type == "devices":
                 entity_type = "device"
-
             changed.add((entity_type, entity_id))
 
     return list(changed)
 
 
-def run_tests(entity_type: str, entity_id: str):
-    """运行指定 entity 的测试"""
-    # 使用 --no-deps 避免递归问题
-    cmd = ["ace", "test", "run", entity_id, "--type", entity_type]
+def _find_tests(entity_type: str, entity_id: str) -> Path | None:
+    if entity_type == "node":
+        for sub in ("atomic", "auto", "composite", "builtin"):
+            td = _STORE / "nodes" / sub / entity_id / "tests"
+            if td.exists():
+                return td
+    elif entity_type == "device":
+        for td in (
+            _STORE / "devices" / entity_id / "tests",
+            _STORE / "devices" / entity_id / "simulator" / "tests",
+        ):
+            if td.exists():
+                return td
+    elif entity_type == "workflow":
+        td = _STORE / "workflows" / entity_id / "tests"
+        if td.exists():
+            return td
+    return None
 
-    # 设置环境变量防止递归
+
+def _dispatch_background(entity_type: str, entity_id: str) -> int | None:
+    """Spawn `ace test run` detached. Returns child PID on success, None on failure."""
+    _PENDING.mkdir(parents=True, exist_ok=True)
+    _RESULTS.mkdir(parents=True, exist_ok=True)
+
+    safe_id = f"{entity_type}_{entity_id}".replace("/", "_")
+    result_file = _RESULTS / f"{safe_id}.json"
+    marker_file = _PENDING / f"{safe_id}.json"
+
     env = os.environ.copy()
     env["ACE_AUTO_TEST_RUNNING"] = "1"
 
+    # Wrapper: capture exit code + stdout/stderr into result_file, then
+    # remove the pending marker. Runs entirely in the detached child.
+    wrapper = (
+        f"out=$(ace test run {entity_id} --type {entity_type} 2>&1); "
+        f"rc=$?; "
+        f'printf "%s" "$out" | '
+        f'  python3 -c "'
+        f"import json, sys; "
+        f"json.dump({{'rc': $rc, 'entity_type': '{entity_type}', "
+        f"'entity_id': '{entity_id}', 'output': sys.stdin.read()[:4000]}}, "
+        f'open(\\"{result_file}\\", \\"w\\"))"; '
+        f'rm -f "{marker_file}"'
+    )
+
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=60,
-            env=env
+        proc = subprocess.Popen(
+            ["bash", "-c", wrapper],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
+            start_new_session=True,  # detach from CC's process group
         )
-        return result.returncode == 0, result.stdout + result.stderr
-    except subprocess.TimeoutExpired:
-        return False, "Test timeout"
-    except FileNotFoundError:
-        # ace 命令可能不存在
-        return False, "ace command not found"
-    except Exception as e:
-        return False, str(e)
+    except (OSError, FileNotFoundError) as ex:
+        print(f"[auto-test] failed to dispatch: {ex}", file=sys.stderr)
+        return None
+
+    marker_file.write_text(json.dumps({
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "pid": proc.pid,
+        "started_at": time.time(),
+    }))
+    return proc.pid
 
 
-def main():
-    # 防止递归：如果已经在运行测试中，跳过
+def main() -> None:
+    # Recursion guard — when the wrapper itself runs `ace test run`, any
+    # Edit/Write it triggers (it shouldn't, but be safe) must not loop back.
     if os.environ.get("ACE_AUTO_TEST_RUNNING") == "1":
         return
 
-    # 读取 stdin 的 JSON 数据
     try:
         data = json.load(sys.stdin)
     except json.JSONDecodeError:
@@ -124,61 +162,30 @@ def main():
 
     tool_name = data.get("tool_name")
     result = data.get("result", {})
-
-    # 只处理成功的修改操作
     if isinstance(result, dict) and not result.get("success", True):
         return
 
-    # 检测修改的 entities
-    changed_entities = detect_changed_entities(tool_name, result)
-
-    if not changed_entities:
+    changed = detect_changed_entities(tool_name, result)
+    if not changed:
         return
 
-    # 去重并运行测试
-    seen = set()
-    for entity_type, entity_id in changed_entities:
-        key = (entity_type, entity_id)
-        if key in seen:
+    seen: set[tuple[str, str]] = set()
+    for entity_type, entity_id in changed:
+        if (entity_type, entity_id) in seen:
             continue
-        seen.add(key)
+        seen.add((entity_type, entity_id))
 
-        # 检查是否有测试
-        store_dir = get_store_dir()
-        test_dir = None
-
-        if entity_type == "node":
-            for sub in ["atomic", "auto", "composite", "builtin"]:
-                td = store_dir / "nodes" / sub / entity_id / "tests"
-                if td.exists():
-                    test_dir = td
-                    break
-        elif entity_type == "device":
-            td = store_dir / "devices" / entity_id / "tests"
-            if td.exists():
-                test_dir = td
-            else:
-                # 检查 simulator 子目录
-                td = store_dir / "devices" / entity_id / "simulator" / "tests"
-                if td.exists():
-                    test_dir = td
-        elif entity_type == "workflow":
-            td = store_dir / "workflows" / entity_id / "tests"
-            if td.exists():
-                test_dir = td
-
-        if not test_dir:
-            print(f"[auto-test] {entity_type}/{entity_id}: No tests found", file=sys.stderr)
+        td = _find_tests(entity_type, entity_id)
+        if td is None:
+            print(f"[auto-test] {entity_type}/{entity_id}: no tests", file=sys.stderr)
             continue
 
-        print(f"[auto-test] Running tests for {entity_type}: {entity_id} ...", file=sys.stderr)
-        success, output = run_tests(entity_type, entity_id)
-
-        if success:
-            print(f"[auto-test] ✓ {entity_type}/{entity_id} passed", file=sys.stderr)
-        else:
-            print(f"[auto-test] ✗ {entity_type}/{entity_id} failed:", file=sys.stderr)
-            print(output, file=sys.stderr)
+        pid = _dispatch_background(entity_type, entity_id)
+        if pid:
+            print(
+                f"[auto-test] dispatched {entity_type}/{entity_id} (pid={pid})",
+                file=sys.stderr,
+            )
 
 
 if __name__ == "__main__":

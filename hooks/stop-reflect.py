@@ -16,7 +16,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 ACE_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", "")
-_ACE_HOME = Path.home() / ".ace"
+_ACE_HOME_OVERRIDE = os.environ.get("ACE_HOME", "")
+_ACE_HOME = Path(_ACE_HOME_OVERRIDE).expanduser() if _ACE_HOME_OVERRIDE else Path.home() / ".ace"
 TRACE_DIR = _ACE_HOME / "traces"
 INSIGHT_DIR = _ACE_HOME / "insights"
 SESSION_FAILURES_FILE = _ACE_HOME / ".session_failures.json"

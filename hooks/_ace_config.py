@@ -12,24 +12,33 @@ from pathlib import Path
 from typing import Any
 
 # ── Path Resolution ───────────────────────────────────────────────────
+#
+# ACE_HOME is the canonical storage root. Default ~/.ace matches what
+# post-tool-trace.py and stop-reflect.py have always written to.
+# CLAUDE_PROJECT_DIR is the *project* root, kept for code that needs to
+# locate project files — but it must NOT derive .ace/ paths or we get
+# the silent SessionStart-vs-trace-store divergence (B1).
 
 ACE_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", "")
+_ACE_HOME_OVERRIDE = os.environ.get("ACE_HOME", "")
 
-# All paths are None when ACE_ROOT is unset (hooks become no-ops)
-ACE_DIR: Path | None = Path(ACE_ROOT) / ".ace" if ACE_ROOT else None
-TRACE_DIR: Path | None = ACE_DIR / "traces" if ACE_DIR else None
-INSIGHT_DIR: Path | None = ACE_DIR / "insights" if ACE_DIR else None
-CHECKPOINT_DIR: Path | None = ACE_DIR / "checkpoints" if ACE_DIR else None
-SESSION_FAILURES_FILE: Path | None = ACE_DIR / ".session_failures.json" if ACE_DIR else None
-EVOLUTION_STATE_FILE: Path | None = ACE_DIR / ".evolution_state.json" if ACE_DIR else None
-CONFIG_FILE: Path | None = ACE_DIR / "config.json" if ACE_DIR else None
+ACE_DIR: Path = (
+    Path(_ACE_HOME_OVERRIDE).expanduser() if _ACE_HOME_OVERRIDE
+    else Path.home() / ".ace"
+)
+TRACE_DIR: Path = ACE_DIR / "traces"
+INSIGHT_DIR: Path = ACE_DIR / "insights"
+CHECKPOINT_DIR: Path = ACE_DIR / "checkpoints"
+SESSION_FAILURES_FILE: Path = ACE_DIR / ".session_failures.json"
+EVOLUTION_STATE_FILE: Path = ACE_DIR / ".evolution_state.json"
+CONFIG_FILE: Path = ACE_DIR / "config.json"
 
 
 # ── User Config (loaded from .ace/config.json if present) ────────────
 
 def _load_user_config() -> dict[str, Any]:
     """Load optional user configuration from .ace/config.json."""
-    if not CONFIG_FILE or not CONFIG_FILE.exists():
+    if not CONFIG_FILE.exists():
         return {}
     try:
         return json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
@@ -96,13 +105,8 @@ CONFIDENCE_THRESHOLD: float = _evolution_config.get("confidence_threshold", 0.3)
 # ── Health Check ─────────────────────────────────────────────────────
 
 def check_ace_health() -> str | None:
-    """Check if ACE is properly configured. Returns warning message or None."""
-    if not ACE_ROOT:
-        return (
-            "[ACE] WARNING: CLAUDE_PROJECT_DIR not set — tracing disabled. "
-            "Run /ace-init to set up."
-        )
-    if not ACE_DIR or not ACE_DIR.exists():
+    """Check if ACE store exists. Returns warning message or None."""
+    if not ACE_DIR.exists():
         return (
             f"[ACE] WARNING: {ACE_DIR} not found — tracing disabled. "
             "Run /ace-init to initialize."
