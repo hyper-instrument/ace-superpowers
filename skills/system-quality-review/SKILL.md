@@ -216,6 +216,46 @@ lark-cli im +messages-send --as user --chat-id <chat_id> --msg-type interactive 
 - commit 行：`本窗口 c 个 commit：新功能 f（实测通过 g）｜修复 h（复测通过 i）`
 - 新增/回归的问题各一行摘要，带引入 commit 短哈希；无变化时明确写"与昨日持平"。
 
+## 代码级增量审查与自动修复（每日 repo 扫描模式）
+
+当 skill 被 autopilot 每日调用、目标为普通代码仓库（如 `hyper-instrument/ace`、`hyper-data`、`hyper-fib`、`lumen`、`ace-benchmark`）时，在 Phase 0-6 的系统级 review 之外，补充一条轻量闭环：**增量代码审查 → 去重 → issue/子任务 → 分级修复 → 收尾**。本模式的消息链路仍以 `system-quality-review` 为准（wiki 报告 + buglist + 群卡片），PR 级大白话通知作为补充。
+
+### 取代码与增量基准
+
+1. **优先本地副本**：使用 `/data/codes/<repo-name>`；进入后 `git pull --ff-only`。本地不存在则 clone 到 `/data/codes/<repo-name>`。
+2. **确定审查窗口**：读取本次 autopilot 父 issue 的 metadata `last_reviewed_sha`；无则默认看最近 7 天提交。只审 `git diff <base>..HEAD` 的变更，避免全仓扫描。
+3. **审查重点**：bug、安全漏洞、并发/正确性问题、性能回归、代码坏味道、缺失测试。
+
+### 去重
+
+发现新问题前，先在对应 GitHub 仓库的 open issues 里搜索一遍，避免重复创建。
+
+### 问题闭环
+
+每个有效发现：
+
+1. **GitHub 建 issue**：`gh issue create --repo <org>/<repo> --title "<标题>" --body "<现象/根因/影响/复现/建议修法/严重度>"`
+2. **Multica 建子任务**：挂在本次 autopilot 父 issue 下（`--parent`），描述里写明对应 GitHub issue 链接；并 `multica issue metadata set <child> --key github_issue --value <gh-url>`。
+
+### 修复分级
+
+- **低风险 + 高把握** → 立即修复并开 PR（遵循 auto-fix skill：写测试 → 提 PR → 更新状态 → 通知）。
+- **高风险 / 架构性 / 把握不足** → 只建 issue，**禁止自动改**，标记"需人工评审"并升级给项目 owner（在父 issue 评论里说明）。
+
+### 硬约束
+
+- 只审增量，避免重复 issue。
+- 所有 PR 必须过测试 / 风格 / 安全门禁。
+- **禁止触碰**：生产部署、DB 迁移、大规模重构——只建 issue + 升级。
+- 任何疑问上报项目 owner，**严禁直接打扰真实用户**。
+- 关键修复的 Reviewer 优先用项目 owner（查 `skills/agent-discovery/SKILL.md` 路由表）。
+
+### 收尾
+
+- 更新父 issue metadata：`last_reviewed_sha = <当前 HEAD SHA>`。
+- 在父 issue 汇总今日发现 / 已开 PR / 未决项 / 需人工评审项。
+- 按 auto-fix 规范更新各 issue 状态。
+
 ## 已知坑（务必遵守）
 
 **⚠️ 执行 Phase 0.1 和 Phase 4-6（任何 lark-cli 调用）之前，必须先读本 skill 同目录的 [trouble_shooting.md](trouble_shooting.md)**——它是完整的踩坑记录（wiki token 解析、scope 名、Base 字段格式、批量写入 JSON 结构等 10 条），下面只是最高频的摘要。执行中新踩并解决的坑，要当场追加到 trouble_shooting.md 并 push（只在会话里解决而不落盘 = 没解决）。
@@ -231,3 +271,5 @@ lark-cli im +messages-send --as user --chat-id <chat_id> --msg-type interactive 
 ## Output
 
 回复用户时必须包含：链路通过统计（n/9 或 n/m）、根因列表、报告文档链接、buglist 写入条数、卡片 message_id。每日执行时额外给出：与上一份报告的对比结论（新增/修复/回归/疑似修复，及各项指标变化）、本窗口 commit 数与新功能实测结论、新增问题的引入 commit 归因。
+
+**每日 repo 扫描模式**还需额外给出：今日审查范围（`last_reviewed_sha..HEAD`）、GitHub 新建 issue 列表、Multica 子任务列表、已开 PR 列表、需人工评审项、 Lark/父 issue 通知记录。
