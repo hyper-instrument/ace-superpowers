@@ -1,5 +1,13 @@
 # Device Backend — Current Pattern
 
+> **Stateless pure-software device?** The full template below is for a *stateful* simulator.
+> If your device has no state and no lifecycle (a calculator, a solver, a pure-function SDK),
+> **strip it down**: drop `_DEFAULT_STATE`, `inject_fault`/`remove_fault`, the speed-multiplier
+> methods, and the `numpy` import; make `connect`/`disconnect` no-ops (or omit them); and let
+> `execute_operation` call the SDK function (or inline logic) directly, e.g.
+> `return OperationResult(success=True, operation=operation, output={"result": fn(params["a"], params["b"])})`.
+> Model it on `devices/computer/simulator/` (self-contained) rather than a hardware simulator.
+
 **`device.py`** — one concrete device backend extending `DeviceBackend`:
 
 ```python

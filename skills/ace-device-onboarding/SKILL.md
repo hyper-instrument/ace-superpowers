@@ -61,11 +61,50 @@ run gates when those operations are listed in the acceptance contract. It never
 pre-approves physical-device actions or `ace hub push`; either requirement makes the run
 interactive.
 
+**Headless scope stops at Phase 5.** A non-interactive brief covers Phases 2–5 only.
+Do NOT enter Phase 6 (write `CLAUDE_BENCHMARK_STATUS.md`, invoke `ace-evolve`, or
+`ace hub push`) unless the brief explicitly asks you to share/evolve — those steps have
+interactive HITL gates and will stall a headless run. When the acceptance contract is
+met, run the self-validation checklist below and stop.
+
 For the interactive path, when all five gates are collected, summarise the answers back
 to the human in one short message and explicitly ask for approval to move to Phase 2.
 For a valid non-interactive brief, log the supplied answers and proceed.
 
 ## Phase 2 — Design (brainstorming + spec)
+
+### Pure-software / no-hardware devices → model on a self-contained simulator
+
+A device that is *just software* (a local SDK, a solver, a calculator — no real hardware,
+no network, often stateless) **is a simulator backend**. `DeviceBackend is SimulatorDevice`
+(literally the same class object), so **model these on an existing self-contained simulator
+device**, e.g. `devices/computer/simulator/`. Do NOT invent a new shape and do NOT
+reverse-engineer `registry.py` or ACE core to learn how backends load — one simulator
+example plus the `references/` templates is all you need.
+
+Minimum runnable form — **get `ace workflow run` GREEN first, polish later**:
+
+- **Shape**: standalone `devices/<id>/` with `device_backend: {"source": "local", "config": {}}`.
+  The backend loads from `device.py` in that same dir. `has_simulator: true` and
+  `simulator_id` are **valid simulator fields, not errors** — copying them from a simulator
+  example is fine.
+- **device.py**: a `DeviceBackend` (a.k.a. `SimulatorDevice`) subclass. If the device is
+  **stateless with no lifecycle**, keep it minimal: no `_DEFAULT_STATE`, no `inject_fault`,
+  no speed knobs; `connect`/`disconnect` can be no-ops. Either embed the logic inline (like
+  `computer/simulator`) or import a local SDK by adding its dir to `sys.path` (again like
+  `computer/simulator`, which does this for ACE core).
+- **`metadata.sdk_install` is OPTIONAL.** A self-contained simulator ships **no**
+  `sdk_install` and still runs — so omit it when the backend is self-contained or the SDK is
+  already reachable. Only add it (`method: "local"`, `package: "${ACE_PROJECT_ROOT}/<sdk-dir>"`,
+  `import_name: [...]`) when you want reproducible install / sharing. **Never block
+  onboarding trying to formalize a pip package** for a hard-to-package local SDK.
+- **workflow**: a **flat file** `workflows/<workflow-id>.json` — **NOT** a subdirectory.
+  `ace workflow list` only indexes flat `workflows/*.json`; a workflow saved as
+  `workflows/<id>/<id>.json` still *runs by id* but will **NOT appear in `ace workflow
+  list`**. Action nodes carry `operation` + `params` only.
+
+Persist `device.json` + `device.py` **early**, then run the Phase 5 self-validation. This
+class of device should take a handful of tool calls, not source spelunking.
 
 Once Phase 1 is approved:
 
@@ -159,6 +198,54 @@ Never modify ACE framework core. Work around limitations in your adapter.
 
 Fix failures before marking Phase 5 complete.
 
+### Headless self-validation (Definition of Done)
+
+When running from a non-interactive brief there is no human to confirm — you own
+verification. Before you report success, run these **from the project directory** and fix
+any failure in a single pass (read the error, correct the asset, re-run — don't loop on
+`Bash` guessing):
+
+1. `ace store info` — confirm the active Store is the one the brief targets (usually the
+   project's repo Store). Write **every** asset under it.
+2. `ace device validate <device-name>` — resolves and type-checks the device.
+3. `ace device list` — your new device appears (run from the project dir, not `$HOME`).
+4. `ace workflow list` — your new workflow appears. If `run` works but the workflow is
+   missing from `list`, it is almost certainly saved as `workflows/<id>/<id>.json`
+   (a subdir); move it to a flat `workflows/<id>.json` and re-check.
+5. `ace workflow run <workflow> --mode auto --no-report` — succeeds end-to-end.
+6. Confirm the numeric/observable results equal the operation applied to each node's own
+   inputs (don't just check it "ran" — check it computed the right answers).
+
+A project-local SDK that is not importable during validate/list is expected: `workflow
+run` installs it from `metadata.sdk_install` and reloads the backend. Do NOT `pip install`
+it by hand and do NOT edit the SDK to work around import errors.
+
+### Common failure modes — self-check against these
+
+These are the recurring ways a headless onboarding silently produces broken assets. Verify
+each before declaring done:
+
+- **Wrong Store**: assets written to `~/.ace/store` while the project uses a repo Store, so
+  `ace device list` from the project can't see them. Always `ace store info` first, then
+  write under the resolved active Store.
+- **Mixed device shape**: don't mix standalone and family-backed. For a single
+  implementation, standalone `devices/<device-id>/` is simplest; only add
+  `devices/<family>/type.json` + `type_ref` when there is a real family of implementations.
+- **Workflow in a subdirectory**: `ace workflow list` only indexes flat `workflows/*.json`.
+  A workflow saved as `workflows/<id>/<id>.json` runs by id but never shows in `list`. Save
+  it as a flat `workflows/<id>.json`.
+- **Field naming**: prefer the neutral backend key `device_backend` over the deprecated
+  bare `simulator` key, and `metadata.sdk_install` over `metadata.sdk`/`metadata.sdk_path`.
+  BUT `simulator_id` and `has_simulator` are **valid simulator fields** used by current
+  examples (`computer/simulator`) — do not treat them as errors.
+- **Non-portable SDK path**: `sdk_install` is optional (see Phase 2). If you do declare it
+  for a project-local SDK, use `method: "local"`, `package: "${ACE_PROJECT_ROOT}/<sdk-dir>"`,
+  `import_name: [...]` — never a hardcoded absolute container path.
+- **Workflow action params**: runtime arguments go under `params` only; do not put them
+  under `inputs` / `outputs` / `node` on an action node.
+- **Unneeded `node.py`**: ordinary SDK operations belong in `device.py`; add `node.py`
+  only for custom/composite logic. Don't scaffold empty `node.py` files.
+
 ## Phase 6: Evolution & Sharing
 
 **Before invoking ace-evolve**, write `CLAUDE_BENCHMARK_STATUS.md` in workspace root:
@@ -223,9 +310,11 @@ See `references/device-json-template.md` for complete examples of both forms.
 | Custom node logic | Cross-device/composite logic not owned by one backend | optional `node.py` |
 | SDK installation | Reproducible package declaration | `metadata.sdk_install` |
 
-New assets must use `device_backend`, `metadata.sdk_install`, and imports from
-`ace.core.*`. Legacy keys (`simulator`, `simulator_id`, `metadata.sdk`, and
-`metadata.sdk_path`) are read-only compatibility and must not be generated.
+New assets should prefer the neutral backend key `device_backend` and imports from
+`ace.core.*`. `metadata.sdk_install` is optional (omit for self-contained backends).
+`simulator_id` / `has_simulator` are valid simulator fields; the truly deprecated keys to
+avoid generating are the bare `simulator` backend key and `metadata.sdk` /
+`metadata.sdk_path`.
 
 ## Anti-Patterns — STOP Immediately
 

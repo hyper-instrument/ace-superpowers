@@ -158,6 +158,10 @@ Key principles:
 - `has_simulator` describes whether this leaf is simulated; keep the safe template
   default `false` for physical devices and set it to `true` only for simulator leaves.
 - Ordinary SDK operations live in `device.py`; `node.py` is optional custom logic.
-- New definitions must use `metadata.sdk_install`.
-- Do not generate legacy `simulator`, `simulator_id`, `metadata.sdk`, or
-  `metadata.sdk_path` fields. The runtime reads them only for backward compatibility.
+- `metadata.sdk_install` is **optional**: a self-contained backend (logic embedded in
+  `device.py`, like `computer/simulator`) ships none and still runs. Add it only for a
+  reproducible/shared install; for a project-local SDK use `method: "local"` +
+  `${ACE_PROJECT_ROOT}/...`.
+- Prefer the neutral `device_backend` key over the deprecated bare `simulator` key, and
+  `metadata.sdk_install` over `metadata.sdk` / `metadata.sdk_path`. `simulator_id` and
+  `has_simulator` are valid simulator fields (see `computer/simulator`), not errors.

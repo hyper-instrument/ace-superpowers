@@ -100,6 +100,8 @@ git show <commit> --stat   # 再按需 git show <commit> -- <file>
 
 **其余链路（上次通过且本窗口代码未动）→ 跳过**，结果直接沿用上次，报告对比表中该行标注 `⏩ 沿用（unchanged since <commit>）`——沿用不是实测，绝不能标成 ✅ 通过。
 
+ace 项目里，「必测集」直接落成 Phase 1.1 的 runner 选择：把必测链路按 1.0 映射表换成对应 case，用 `--case`（可多次）或 `--scenario` 只跑这些；未选中的 case = 沿用（不是 e2e 的 `skipped`，报告里仍标 `⏩ 沿用`）。
+
 特殊情形：
 
 - **零 commit 日**：极速模式，只跑第 1、3 类（上次失败 + smoke），报告注明"代码无变更"。
@@ -108,29 +110,75 @@ git show <commit> --stat   # 再按需 git show <commit> -- <file>
 
 与核心原则 1"实测，不推断"的关系：沿用只允许在「代码未动 + 上次实测通过 + 报告明确标注 + 每周全量兜底」四个条件同时满足时使用，这是有安全网的缓存，不是推断。
 
-## Phase 1 — 核心链路实测
+## Phase 1 — 核心链路实测（ace 走 e2e 隔离框架）
 
-**ace 项目的标准链路清单**（其他项目按同样思路推导：安装 → quickstart → 核心工作流 → 扩展接入 → 持久化 → 集成闭环）。每日执行时先按 0.3 增量模式筛出必测集，只实测必测集，其余标注沿用：
+**核心链路实测已固化为 `scripts/e2e/` 的隔离形态**（Docker 容器 · 声明式 step 链 · 依赖 DAG · 按 step 落报告），不再手敲一条条命令。ace 项目**一律用 e2e runner 执行链路实测**，读它落盘的报告做断言；其他项目若无 e2e 框架，才退回手动跑标准链路（见文末「无 e2e 框架的项目」）。
 
-1. 安装配置：`make install`（可只静态检查 Makefile）& `ace --help` / `ace version`
-2. quickstart 接入 calculator：`ace workflow run calc_expr --mode auto`
-3. FIBSEM 基础切割工作流（检查是否真实执行，见"假成功"）
-4. 已有 simulator 时再接入第二个设备（tescan/thermofisher，`ace device create`）
-5. TEM 工作流（sample_preparation）
-6. 记忆库存取：`ace gbrain doctor`
-7. `ace hub pull/push <device>`（含 hub git sync 状态）
-8. session 后 trace/evolution 触发：检查 `~/.ace/store/traces/<today>.jsonl` 质量（状态是否正确、是否重复、error 是否非空）+ `ace evolve run` 是否产出 pattern/insight
-9. 失败→修正→召回闭环：负面 insight 是否在下次运行前被 `get_warnings_for_execution` 召回
+> 为什么用 e2e：它把「实测不推断」「不信任绿色输出」「假成功检测」「产物核对」全部编码进 step 断言（`skip` 仅留给结构性不适用，空跑判 error，依赖失败下游 blocked），比手动跑更严格、可复现、宿主零污染。这正是本 skill 核心原则 1-3 的机器化实现。
 
-**执行要点：**
-- 默认 agentic 的命令要同时测 agentic 和 `--mode auto` 两条路径。
-- 每次运行后读 run JSON（`~/.ace/store/run/workflow/<wf>/<job>.json`）核对节点真实状态。
-- **测试套件分层跑，全程后台**，和链路实测并行，绝不串行等它：
-  1. 先跑 `pytest --lf -q`（只跑上次失败的，pytest 自身缓存，几分钟内给出回归/修复信号）；`--lf` 无缓存或首轮时跳过这步。
-  2. 全量套件（如 `python -m pytest tests/core/ -q`）只在**全量日、首轮、或本窗口 commit 触及核心模块**时跑；增量日的 FAILED 基线直接沿用上次报告并标注。
-  3. 装了 `pytest-xdist` 就加 `-n auto` 并行（先 `python -m pytest --collect-only -q -n auto` 之类快速探测插件是否可用，不可用则单进程，不要为此临时装依赖）。
-  4. 统计 FAILED 按文件归并；`--lf` 的结果只用于回归判断，FAILED 总数以最近一次全量为准，报告中注明基线日期。
+### 1.0 标准链路 ↔ e2e case 映射（ace）
+
+标准链路清单（安装 → quickstart → 核心工作流 → 扩展接入 → 持久化 → 集成闭环）与 e2e case 一一对应；执行时按 0.3 增量模式筛出必测集，转成 runner 的 `--case` / `--scenario` 选择：
+
+| # | 标准链路 | e2e case | scenario |
+|---|----------|----------|----------|
+| 1 | 安装配置：`make install` & `ace --help`/`version` | `install_flow`（基座，真跑 make install + 幂等 + 卸载） | `install-config` |
+| 2 | quickstart 接入 calculator | `quickstart_calculator`（真 agent onboarding + 数值断言） | `quickstart` |
+| 3 | FIBSEM 基础切割工作流（防假成功） | `fibsem_milling`（起 simulator_server 真跑 miling_with_mesh，断言 `WorkflowSucceeded`） | `device-integration` |
+| 4 | 已有 simulator 后接第二个设备 | `fibsem_tescan_sdk`（tescan `install_sdk` + 依赖 import） | `device-integration` |
+| 5 | TEM 工作流（sample_preparation） | `tem_sample_prep`（pull + show/validate + 结构/设备绑定断言） | `tem-preparation` |
+| 6 | 记忆库存取：`ace gbrain doctor` | `gbrain_memory`（gbrain 连通 + experience CRUD/检索） | `memory-store` |
+| 7 | `ace hub pull/push`（含 git sync 状态） | `hub_sync`（`store status` + pull origin + push 本地 bare `--no-pr`） | `hub-sync` |
+| 8 | session 后 trace/evolution 触发 | `session_trace_evolution`（PostToolUse 写 trace → Stop 触发 pattern 提取） | `evolution-loop` |
+| 9 | 失败→修正→召回闭环 | `trace_memory_recall`（trace→gbrain→PreExecutionMemory 召回→二次执行直接成功） | `memory-store` |
+
+附加链路（不在 9 条清单但已有 case，全量日一并跑）：`workflow_success`（`workflow-execution`）、`control_pause_resume_stop`（`workflow-control`）、`traceback_hyperdata`（`traceback-report`）。
+
+**发现新功能没有对应 case（Phase 0.2 变更扫描命中新链路）**：优先在 `scripts/e2e/cases/` 新写一个 case（`CASE = Case(...)`，`inherit=Inherit(base="install_flow")`，声明式 `steps`；范式见 `scripts/e2e/README.md`「怎么加一个 case」），把新链路纳入 e2e，而不是临时手敲命令——本 skill 追求「链路实测可复现、可每日执行」，一次性手测不满足。新 case 提交后同步更新本表与 e2e README 的场景表。
+
+### 1.1 执行 e2e（按增量模式选择范围）
+
+```bash
+# 前置:有 docker daemon(无则相关 case 自动 skip);首跑 install_flow 会真装(慢),之后指纹缓存复用基座镜像。
+# 推荐设 ACE_E2E_HUB_PATH 指向宿主 ace-hub 浅克隆;LLM key 写 scripts/e2e/.env(见 README)。
+
+# 全量日 / 首轮:跑全部(按 DAG 拓扑)
+.venv/bin/python scripts/e2e/run.py
+
+# 增量日:只跑必测集(0.3 推导)——上次失败的 case + 本窗口 commit 涉及模块的 case + 1 条黄金 smoke
+.venv/bin/python scripts/e2e/run.py --case fibsem_milling --case ...   # 逐个指定;或
+.venv/bin/python scripts/e2e/run.py --scenario device-integration      # 按场景;或
+.venv/bin/python scripts/e2e/run.py --sprint e2e-core                  # 按 sprint
+
+# 报告默认落 scripts/e2e/reports/e2e-<时间戳>.{json,md,html};JSON 供本 skill 解析断言。
+```
+
+runner 自动纳入被选 case 的 `depends_on` 依赖（如选 `fibsem_milling` 会自动带上基座 `install_flow`）。**黄金路径 smoke** = 链路 2（`--case quickstart_calculator`）。
+
+### 1.2 从 e2e 报告读结论（不信任绿色输出）
+
+读最新 `reports/e2e-*.json`，按 case 提取状态并映射回标准链路清单：
+
+- **状态语义**：`passed` 所有 step 断言全过 → ✅ 实测通过；`failed`/`error` → ❌ 实测失败（error 含空跑/异常/setup 失败）；`skipped` 仅结构性不适用（如无 docker，**不计入分母**）；`blocked` 依赖未过/前置 critical step 失败（显著标注，不算通过）。
+- **假成功检测已内建**：e2e case 的断言直接核对 run JSON 的 `events`（如断言 `WorkflowSucceeded` 而非只看退出码 0）、节点真实状态、产物文件；报告里某 case `passed` 即代表这些产物核对已通过。仍要抽查报告里每个 step 的 check 明细，警惕 case 断言写得过松。
+- **链路通过数**：本 skill 报告的「链路 n/9」直接由映射表统计对应 9 个 case 的 `passed` 数得出；附加 case 单列。case `skipped`（如缺 docker）要在报告注明「因缺 X 未测」，不能计入通过。
+
+### 1.3 与 e2e 并行的测试套件（沿用原分层策略）
+
+链路实测（e2e）之外，pytest 单元/集成套件仍要**全程后台、与 e2e 并行，绝不串行等它**：
+
+1. 先跑 `pytest --lf -q`（只跑上次失败的，pytest 自身缓存，几分钟内给出回归/修复信号）；`--lf` 无缓存或首轮时跳过这步。
+2. 全量套件（如 `python -m pytest tests/core/ -q`）只在**全量日、首轮、或本窗口 commit 触及核心模块**时跑；增量日的 FAILED 基线直接沿用上次报告并标注。
+3. 装了 `pytest-xdist` 就加 `-n auto` 并行（先 `python -m pytest --collect-only -q -n auto` 之类快速探测插件是否可用，不可用则单进程，不要为此临时装依赖）。
+4. 统计 FAILED 按文件归并；`--lf` 的结果只用于回归判断，FAILED 总数以最近一次全量为准，报告中注明基线日期。
 - 记录所有噪音（loader 告警、重复注册表条目、无关提示），它们是易用性问题的直接证据。
+
+### 无 e2e 框架的项目（退回手动标准链路）
+
+其他项目若无 `scripts/e2e/`，按同样思路手动跑标准链路（安装 → quickstart → 核心工作流 → 扩展接入 → 持久化 → 集成闭环），执行要点：
+- 默认 agentic 的命令要同时测 agentic 和 `--mode auto` 两条路径。
+- 每次运行后读 run JSON（`~/.ace/store/run/workflow/<wf>/<job>.json`）核对节点真实状态，警惕假成功（显示 ✓ 但 `simulated: true` / 节点未真跑）。
+- 有能力时优先给该项目补一套等价的隔离 e2e 框架，把链路实测固化下来。
 
 ## Phase 2 — 根因分析
 
@@ -159,7 +207,7 @@ git show <commit> --stat   # 再按需 git show <commit> -- <file>
 - **新增根因、新挂链路**：完整展开（现象/机理/证据 file:line/复现命令），并写明引入 commit（0.2 归因的结果）。
 - **消失的根因**：注明疑似修复 commit，标记"待人工确认后关闭"。
 - **持续存在的旧问题**：一行一条，链接上一份报告，不重复展开。
-- **链路明细**：每条链路标明 ✅ 实测通过 / ❌ 实测失败 / ⏩ 沿用（unchanged since \<commit\>）；对比行的 y/9 可含沿用，但实测数与沿用数要分开写（如 `9/9（实测 4 + 沿用 5）`）。
+- **链路明细**：每条链路标明 ✅ 实测通过 / ❌ 实测失败 / ⏩ 沿用（unchanged since \<commit\>）；对比行的 y/9 可含沿用，但实测数与沿用数要分开写（如 `9/9（实测 4 + 沿用 5）`）。ace 项目的链路状态直接来自本轮 e2e 报告（`scripts/e2e/reports/e2e-*.json`，按 Phase 1.0 映射表回填 9 条链路），失败链路引用报告里对应 case 的失败 step 名。
 
 第二节固定为「🔀 本窗口 commit 变更」：变更清单（新功能/修复/重构分组），每条新功能标注实测结论（✅ 通过 / ❌ 引入问题 X / ⏭️ 未覆盖及原因），每条修复 commit 标注复测结论。之后才是常规的根因分析和修复计划正文。
 
