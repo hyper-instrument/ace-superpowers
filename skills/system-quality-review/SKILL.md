@@ -124,15 +124,14 @@ ace 项目里，「必测集」直接落成 Phase 1.1 的 runner 选择：把必
 |---|----------|----------|----------|
 | 1 | 安装配置：`make install` & `ace --help`/`version` | `install_flow`（基座，真跑 make install + 幂等 + 卸载） | `install-config` |
 | 2 | quickstart 接入 calculator | `quickstart_calculator`（真 agent onboarding + 数值断言） | `quickstart` |
-| 3 | FIBSEM 基础切割工作流（防假成功） | `fibsem_milling`（起 simulator_server 真跑 miling_with_mesh，断言 `WorkflowSucceeded`） | `device-integration` |
+| 3 | FIBSEM 基础切割工作流（防假成功；含 TEM 制样切割阶段 `miling_with_mesh`） | `fibsem_milling`（起 simulator_server 真跑 miling_with_mesh，断言 `WorkflowSucceeded`） | `device-integration` |
 | 4 | 已有 simulator 后接第二个设备 | `fibsem_tescan_sdk`（tescan `install_sdk` + 依赖 import） | `device-integration` |
-| 5 | TEM 工作流（sample_preparation） | `tem_sample_prep`（pull + show/validate + 结构/设备绑定断言） | `tem-preparation` |
-| 6 | 记忆库存取：`ace gbrain doctor` | `gbrain_memory`（gbrain 连通 + experience CRUD/检索） | `memory-store` |
-| 7 | `ace hub pull/push`（含 git sync 状态） | `hub_sync`（`store status` + pull origin + push 本地 bare `--no-pr`） | `hub-sync` |
-| 8 | session 后 trace/evolution 触发 | `session_trace_evolution`（PostToolUse 写 trace → Stop 触发 pattern 提取） | `evolution-loop` |
-| 9 | 失败→修正→召回闭环 | `trace_memory_recall`（trace→gbrain→PreExecutionMemory 召回→二次执行直接成功） | `memory-store` |
+| 5 | 记忆库存取：`ace gbrain doctor` | `gbrain_memory`（gbrain 连通 + experience CRUD/检索） | `memory-store` |
+| 6 | `ace hub pull/push`（含 git sync 状态） | `hub_sync`（`store status` + pull origin + push 本地 bare `--no-pr`） | `hub-sync` |
+| 7 | session 后 trace/evolution 触发 | `session_trace_evolution`（PostToolUse 写 trace → Stop 触发 pattern 提取） | `evolution-loop` |
+| 8 | 失败→修正→召回闭环 | `trace_memory_recall`（trace→gbrain→PreExecutionMemory 召回→二次执行直接成功） | `memory-store` |
 
-附加链路（不在 9 条清单但已有 case，全量日一并跑）：`workflow_success`（`workflow-execution`）、`control_pause_resume_stop`（`workflow-control`）、`traceback_hyperdata`（`traceback-report`）。
+附加链路（不在 8 条清单但已有 case，全量日一并跑）：`workflow_success`（`workflow-execution`）、`control_pause_resume_stop`（`workflow-control`）、`traceback_hyperdata`（`traceback-report`）。
 
 **发现新功能没有对应 case（Phase 0.2 变更扫描命中新链路）**：优先在 `scripts/e2e/cases/` 新写一个 case（`CASE = Case(...)`，`inherit=Inherit(base="install_flow")`，声明式 `steps`；范式见 `scripts/e2e/README.md`「怎么加一个 case」），把新链路纳入 e2e，而不是临时手敲命令——本 skill 追求「链路实测可复现、可每日执行」，一次性手测不满足。新 case 提交后同步更新本表与 e2e README 的场景表。
 
@@ -161,7 +160,7 @@ runner 自动纳入被选 case 的 `depends_on` 依赖（如选 `fibsem_milling`
 
 - **状态语义**：`passed` 所有 step 断言全过 → ✅ 实测通过；`failed`/`error` → ❌ 实测失败（error 含空跑/异常/setup 失败）；`skipped` 仅结构性不适用（如无 docker，**不计入分母**）；`blocked` 依赖未过/前置 critical step 失败（显著标注，不算通过）。
 - **假成功检测已内建**：e2e case 的断言直接核对 run JSON 的 `events`（如断言 `WorkflowSucceeded` 而非只看退出码 0）、节点真实状态、产物文件；报告里某 case `passed` 即代表这些产物核对已通过。仍要抽查报告里每个 step 的 check 明细，警惕 case 断言写得过松。
-- **链路通过数**：本 skill 报告的「链路 n/9」直接由映射表统计对应 9 个 case 的 `passed` 数得出；附加 case 单列。case `skipped`（如缺 docker）要在报告注明「因缺 X 未测」，不能计入通过。
+- **链路通过数**：本 skill 报告的「链路 n/8」直接由映射表统计对应 8 个 case 的 `passed` 数得出；附加 case 单列。case `skipped`（如缺 docker）要在报告注明「因缺 X 未测」，不能计入通过。
 
 ### 1.3 与 e2e 并行的测试套件（沿用原分层策略）
 
@@ -199,7 +198,7 @@ runner 自动纳入被选 case 的 `depends_on` 依赖（如选 `fibsem_milling`
 
 | 维度 | 上次 (MM-DD) | 本次 | 变化 |
 |------|------|------|------|
-| 链路通过 | x/9 | y/9 | ✅ 修复：链路 A；❌ 新挂：链路 B |
+| 链路通过 | x/8 | y/8 | ✅ 修复：链路 A；❌ 新挂：链路 B |
 | pytest FAILED | a | b | ±n（新增失败文件列出） |
 | 根因数 | p | q | 新增 [slug…] / 消失 [slug…] |
 | buglist | 新增 m 条 | 新增 m' 条 | 仍存在 N / 回归 R / 疑似修复 K |
@@ -207,7 +206,7 @@ runner 自动纳入被选 case 的 `depends_on` 依赖（如选 `fibsem_milling`
 - **新增根因、新挂链路**：完整展开（现象/机理/证据 file:line/复现命令），并写明引入 commit（0.2 归因的结果）。
 - **消失的根因**：注明疑似修复 commit，标记"待人工确认后关闭"。
 - **持续存在的旧问题**：一行一条，链接上一份报告，不重复展开。
-- **链路明细**：每条链路标明 ✅ 实测通过 / ❌ 实测失败 / ⏩ 沿用（unchanged since \<commit\>）；对比行的 y/9 可含沿用，但实测数与沿用数要分开写（如 `9/9（实测 4 + 沿用 5）`）。ace 项目的链路状态直接来自本轮 e2e 报告（`scripts/e2e/reports/e2e-*.json`，按 Phase 1.0 映射表回填 9 条链路），失败链路引用报告里对应 case 的失败 step 名。
+- **链路明细**：每条链路标明 ✅ 实测通过 / ❌ 实测失败 / ⏩ 沿用（unchanged since \<commit\>）；对比行的 y/8 可含沿用，但实测数与沿用数要分开写（如 `8/8（实测 4 + 沿用 4）`）。ace 项目的链路状态直接来自本轮 e2e 报告（`scripts/e2e/reports/e2e-*.json`，按 Phase 1.0 映射表回填 8 条链路），失败链路引用报告里对应 case 的失败 step 名。
 
 第二节固定为「🔀 本窗口 commit 变更」：变更清单（新功能/修复/重构分组），每条新功能标注实测结论（✅ 通过 / ❌ 引入问题 X / ⏭️ 未覆盖及原因），每条修复 commit 标注复测结论。之后才是常规的根因分析和修复计划正文。
 
@@ -260,7 +259,7 @@ lark-cli im +messages-send --as user --chat-id <chat_id> --msg-type interactive 
 
 每日执行时卡片正文只写**增量与归因**，不重复旧问题详情：
 
-- 对比行：`链路 y/9（上次 x/9）｜新增 M ｜回归 R ｜疑似修复 K ｜仍存在 N`
+- 对比行：`链路 y/8（上次 x/8）｜新增 M ｜回归 R ｜疑似修复 K ｜仍存在 N`
 - commit 行：`本窗口 c 个 commit：新功能 f（实测通过 g）｜修复 h（复测通过 i）`
 - 新增/回归的问题各一行摘要，带引入 commit 短哈希；无变化时明确写"与昨日持平"。
 
@@ -318,6 +317,6 @@ lark-cli im +messages-send --as user --chat-id <chat_id> --msg-type interactive 
 
 ## Output
 
-回复用户时必须包含：链路通过统计（n/9 或 n/m）、根因列表、报告文档链接、buglist 写入条数、卡片 message_id。每日执行时额外给出：与上一份报告的对比结论（新增/修复/回归/疑似修复，及各项指标变化）、本窗口 commit 数与新功能实测结论、新增问题的引入 commit 归因。
+回复用户时必须包含：链路通过统计（n/8 或 n/m）、根因列表、报告文档链接、buglist 写入条数、卡片 message_id。每日执行时额外给出：与上一份报告的对比结论（新增/修复/回归/疑似修复，及各项指标变化）、本窗口 commit 数与新功能实测结论、新增问题的引入 commit 归因。
 
 **每日 repo 扫描模式**还需额外给出：今日审查范围（`last_reviewed_sha..HEAD`）、GitHub 新建 issue 列表、Multica 子任务列表、已开 PR 列表、需人工评审项、 Lark/父 issue 通知记录。
