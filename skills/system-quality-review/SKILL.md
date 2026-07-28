@@ -139,7 +139,8 @@ ace 项目里，「必测集」直接落成 Phase 1.1 的 runner 选择：把必
 
 ```bash
 # 前置:有 docker daemon(无则相关 case 自动 skip);首跑 install_flow 会真装(慢),之后指纹缓存复用基座镜像。
-# 推荐设 ACE_E2E_HUB_PATH 指向宿主 ace-hub 浅克隆;LLM key 写 scripts/e2e/.env(见 README)。
+# e2e 有硬约束「不依赖宿主机文件系统」:不要挂宿主目录进容器提速(见 scripts/e2e/README.md)。
+# 只需备好凭证:ssh-agent(ssh-add)或 ACE_E2E_SSH_KEY;LLM key / OSS 凭证写 scripts/e2e/.env。
 
 # 全量日 / 首轮:跑全部(按 DAG 拓扑)
 .venv/bin/python scripts/e2e/run.py
