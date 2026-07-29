@@ -27,6 +27,10 @@ def _reexec_into_ace_venv() -> None:
 
     Prefer env/config ``ACE_ROOT``, then a Claude project that is itself an
     ACE checkout. No-op when already re-exec'd or when no venv exists.
+
+    Only ever called from the ``__main__`` entrypoint: ``os.execv`` replaces the
+    running process, so calling this at import time (or from ``main()``) kills
+    whatever loaded the module — a test runner importing the hook dies mid-run.
     """
     if os.environ.get("_ACE_HOOK_REEXEC"):
         return
@@ -42,8 +46,6 @@ def _reexec_into_ace_venv() -> None:
         except OSError:
             return  # fall through: best-effort with the current interpreter
 
-
-_reexec_into_ace_venv()
 
 if ACE_ROOT:
     sys.path.insert(0, ACE_ROOT)
@@ -195,6 +197,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    _reexec_into_ace_venv()
     try:
         main()
     except Exception as ex:
