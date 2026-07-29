@@ -506,19 +506,30 @@ def write_blocker_insight(trace: dict) -> None:
                 f.write("\n" + entry + "\n\n")
 
 
-def handle_extended_capture(data: dict) -> bool:
+def handle_extended_capture(
+    data: dict, failed: bool = False, messages: list[str] | None = None
+) -> bool:
     """P2 — capture beyond Bash failures: Edit/Write/API + sampled successes.
 
     Runs only when the Bash failure/eureka path did not fire. Delegates the
     policy (status, entity, sampling) to ``ace.core.evolution.capture`` so it
     stays testable. Returns True if a trace was written.
+
+    Notices go into *messages* rather than straight to stdout: Claude Code parses
+    hook stdout as a single JSON document, so a second ``print`` here would
+    collide with the one in ``main`` and both notices would be dropped.
+
+    Reads the same ``tool_response``/``tool_result`` union as the PCFL path: the
+    real payload carries ``tool_response``, and reading only ``tool_result``
+    here would hand the policy an empty result — losing ``outputs`` on sampled
+    successes and mislabelling semantic/API failures as successes.
     """
     if _CAPTURE is None:
         return False
 
     tool_name = data.get("tool_name", "")
     tool_input = data.get("tool_input", {})
-    tool_result = data.get("tool_result", {})
+    tool_response = _tool_response(data)
 
     # Bash meaningfulness is decided by MEANINGFUL_PATTERNS; non-Bash tools let
     # the capture module apply its own file/API gate.
@@ -528,21 +539,29 @@ def handle_extended_capture(data: dict) -> bool:
         meaningful = None
 
     decision = _CAPTURE.classify_event(
-        tool_name, tool_input, tool_result, meaningful=meaningful
+        tool_name, tool_input, tool_response, meaningful=meaningful, failed=failed
     )
     if not decision.capture:
         return False
 
     if decision.kind == "success":
-        trace = _CAPTURE.build_success_trace(tool_name, tool_input, tool_result, decision)
+        trace = _CAPTURE.build_success_trace(tool_name, tool_input, tool_response, decision)
         trace["timestamp"] = datetime.now(timezone.utc).isoformat()
         append_trace(trace)
         return True
 
     if decision.kind == "failure":
         # Non-Bash (or Bash semantic-only) failure the rich PCFL path missed.
-        result = tool_result or {}
-        error = str(result.get("error") or result.get("stderr") or result.get("stdout") or "")[:500]
+        result = tool_response or {}
+        error = str(
+            result.get("error") or result.get("stderr") or result.get("stdout")
+            or data.get("error") or ""
+        )[:500]
+        if not error:
+            # FailurePatternExtractor groups on ``error`` and skips empty ones —
+            # a failure event with no detail still has to carry a stable key.
+            event = data.get("hook_event_name") or "PostToolUseFailure"
+            error = f"{tool_name or 'tool'} call failed ({event}) — no error detail in payload"
         trace = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "entity_type": decision.entity_type,
@@ -559,9 +578,11 @@ def handle_extended_capture(data: dict) -> bool:
             "significance": decision.significance,
         }
         append_trace(trace)
-        print(json.dumps({
-            "systemMessage": f"[ACE] Traced {tool_name} failure: {decision.entity_type}/{decision.entity_id}"
-        }))
+        if messages is not None:
+            messages.append(
+                f"[ACE] Traced {tool_name} failure: "
+                f"{decision.entity_type}/{decision.entity_id}"
+            )
         return True
 
     return False
@@ -628,12 +649,6 @@ def main():
         trace = extract_eureka_trace(data)
         append_trace(trace)
         n = trace["prior_failure_count"]
-        print(json.dumps({
-            "systemMessage": (
-                f"[ACE] Eureka! {trace['entity_type']}/{trace['entity_id']} "
-                f"succeeded after {n} attempt{'s' if n > 1 else ''} — {trace['insight']}"
-            )
-        }))
         messages.append(
             f"[ACE] Eureka! {trace['entity_type']}/{trace['entity_id']} "
             f"succeeded after {n} attempt{'s' if n > 1 else ''} — {trace['insight']}"
@@ -642,7 +657,7 @@ def main():
         # No significant Bash event — try the broadened P2 capture policy
         # (multi-tool failures + sampled positive successes). Best-effort.
         try:
-            handle_extended_capture(data)
+            handle_extended_capture(data, failed, messages)
         except Exception:  # noqa: BLE001 — hooks must never break the tool call
             pass
 
