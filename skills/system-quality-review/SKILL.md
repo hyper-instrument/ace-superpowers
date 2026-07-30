@@ -135,23 +135,45 @@ ace 项目里，「必测集」直接落成 Phase 1.1 的 runner 选择：把必
 
 **发现新功能没有对应 case（Phase 0.2 变更扫描命中新链路）**：优先在 `scripts/e2e/cases/` 新写一个 case（`CASE = Case(...)`，`inherit=Inherit(base="install_flow")`，声明式 `steps`；范式见 `scripts/e2e/README.md`「怎么加一个 case」），把新链路纳入 e2e，而不是临时手敲命令——本 skill 追求「链路实测可复现、可每日执行」，一次性手测不满足。新 case 提交后同步更新本表与 e2e README 的场景表。
 
-### 1.1 执行 e2e（按增量模式选择范围）
+### 1.1 执行 e2e（每轮重打基座 + 按增量模式选范围）
+
+**起手式是硬规范：每轮实测都必须先清掉旧基座镜像、重打 `install_flow`，再让下游 case 在这个新基座上跑（`--fresh`）。** 不允许拿上一轮遗留的镜像出结论——镜像里的 `/opt/ace`、venv、插件缓存都是打包那天的状态，而基座指纹只覆盖仓库内容（`src/`、`Makefile`、`pyproject.toml`、`scripts/install-plugin.py`、`ace-superpowers/` 整棵树），覆盖不到安装期从网络取的东西（`uv sync` 的包、`claude` CLI、npm 包），也不会因为改了 e2e 框架自身而失效。复用镜像跑出的绿色不算修复证据，红色也可能只是陈旧副作用。
 
 ```bash
-# 前置:有 docker daemon(无则相关 case 自动 skip);首跑 install_flow 会真装(慢),之后指纹缓存复用基座镜像。
+# 前置:有 docker daemon(无则相关 case 自动 skip)。
 # e2e 有硬约束「不依赖宿主机文件系统」:不要挂宿主目录进容器提速(见 scripts/e2e/README.md)。
 # 只需备好凭证:ssh-agent(ssh-add)或 ACE_E2E_SSH_KEY;LLM key / OSS 凭证写 scripts/e2e/.env。
 
-# 全量日 / 首轮:跑全部(按 DAG 拓扑)
-.venv/bin/python scripts/e2e/run.py
+# 全量日 / 首轮:重打基座 + 跑全部(按 DAG 拓扑)
+.venv/bin/python scripts/e2e/run.py --fresh --prune-images
 
-# 增量日:只跑必测集(0.3 推导)——上次失败的 case + 本窗口 commit 涉及模块的 case + 1 条黄金 smoke
-.venv/bin/python scripts/e2e/run.py --case fibsem_milling --case ...   # 逐个指定;或
-.venv/bin/python scripts/e2e/run.py --scenario device-integration      # 按场景;或
-.venv/bin/python scripts/e2e/run.py --sprint e2e-core                  # 按 sprint
+# 增量日:同样带 --fresh(基座照样重打),只是跑的 case 更少
+# 必测集由 0.3 推导——上次失败的 case + 本窗口 commit 涉及模块的 case + 1 条黄金 smoke
+.venv/bin/python scripts/e2e/run.py --fresh --case fibsem_milling --case ...   # 逐个指定;或
+.venv/bin/python scripts/e2e/run.py --fresh --scenario device-integration      # 按场景;或
+.venv/bin/python scripts/e2e/run.py --fresh --sprint e2e-core                  # 按 sprint
+
+# 收尾:回收被同名 commit 覆盖后变 dangling 的层
+docker image prune -f
 
 # 报告默认落 scripts/e2e/reports/e2e-<时间戳>.{json,md,html};JSON 供本 skill 解析断言。
 ```
+
+`--fresh` 删掉当前指纹的 `ace-e2e:base-*` 与本轮涉及的 `commit_as` 产物 tag（如 `ace-e2e:fibsem-milling`），于是 `install_flow` 真跑一遍 `make install`（本地约 10–20 min，5090 首次依赖预热约 30–40 min），下游 case 全部继承这个新基座；`--prune-images` 顺手清掉历史指纹的 `rootfs-*`/`base-*` 回收空间。**要把这份耗时算进当轮排期**：e2e 一律后台起，同时并行推进 Phase 0.2 变更扫描与 1.3 的 pytest 套件，不要串行干等。
+
+**`--fresh` 覆盖不到 rootfs 依赖层**（`ace-e2e:rootfs-<deps_fp>`：apt 包、node/npm、`uv sync --no-install-project` 预热的第三方 venv）。它由 `pyproject.toml` + `Dockerfile.rootfs` 指纹寻址，改了才自动重建；基座重装时的 `uv sync` 只在这个 venv 上增量补齐，不会升级已装的包，所以「第三方库发了新版本破坏 ace」这类问题 `--fresh` 发现不了。**每周一次（周一的全量日）连 rootfs 一起重建**，覆盖依赖漂移：
+
+```bash
+# 当前依赖指纹对应的 rootfs tag 由 imagecache 给出,别手抄指纹
+docker rmi "$(.venv/bin/python -c "import sys; sys.path.insert(0,'scripts/e2e'); import imagecache; print(imagecache.rootfs_tag())")"
+.venv/bin/python scripts/e2e/run.py --fresh --prune-images
+```
+
+多 6–14 min，且需 BuildKit `--ssh` 拉私有 `hyperdata-client`（`ssh-add` 备好凭证，否则构建直接失败）。`claude` CLI 与 ace-superpowers skill **不在** rootfs，由 `make install` 装，每轮 `--fresh` 已经重装。
+
+**唯一例外**：同一轮里为定位同一个问题反复复跑，可临时省略 `--fresh` 提速；但写进报告/buglist 的结论必须来自带 `--fresh` 的那次执行。
+
+**禁止手工 `docker run` 某个 `ace-e2e:*` 镜像来判断当前行为**——那些 tag 是历史快照（尤其 `commit_as` 产物，既不带指纹也不在任何自动清理范围内），里面的 `/opt/ace` 与插件缓存是打包那天的状态，正常 runner 流程根本不会去继承它们，照它下结论只会得到过期现象。判断当前行为一律走 `run.py`，让它重建基座并注入当前工作区代码。
 
 runner 自动纳入被选 case 的 `depends_on` 依赖（如选 `fibsem_milling` 会自动带上基座 `install_flow`）。**黄金路径 smoke** = 链路 2（`--case quickstart_calculator`）。
 
@@ -243,7 +265,7 @@ lark-cli base +record-batch-create --as user --base-token <base> --table-id <tab
    - 命中且未关闭（待修复/修复中/待审核）→ **跳过不写**，计入卡片"仍存在 N"。
    - 命中但已关闭（修复完成/已确认/暂不修复）且今日复现 → **回归**：新建记录，问题描述加 `[回归]` 标记，失败原因里引用旧 record_id；计入"回归 R"。
    - 无命中 → 新增写入；计入"新增 M"。
-5. **反向核销**：存量未关闭、但今日实测未复现的问题 → **不改记录**（人工确认修复才关闭），卡片单列"疑似已修复待确认 K 条"。
+5. **反向核销**：存量未关闭、但今日实测未复现的问题 → **不改记录**（人工确认修复才关闭），卡片单列"疑似已修复待确认 K 条"。判「未复现」必须依据带 `--fresh`（重打基座）的那一轮 e2e——复用旧镜像的绿色不构成修复证据，见 Phase 1.1 起手式。
 6. **卡片只报增量**：`新增 M / 仍存在 N / 回归 R / 疑似修复 K`，附链路通过数与测试基线和上一轮的对比。
 
 buglist 字段映射约定：`问题描述`（[P0-x.y] 前缀 + 一句话）、`失败原因`（根因 + 验收标准）、`复现路径`（精确命令）、`变更文件`（file:line + 修法）、`类型`（缺陷/优化/文档）、`重要程度(P0优先)`、`修复难度(L1 最难)`、`修复状态`=待修复、`环境`、`上报人`=[{"id":"ou_aa1da0fb8d5b42eb69389ba4eca58303"}]。
