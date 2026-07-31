@@ -16,11 +16,21 @@
     ],
     "postToolUse": [
       {
-        "event": "Bash",
+        "matcher": "Shell",
         "command": "./hooks/run-hook.cmd post-tool-trace"
       },
       {
-        "event": "Edit|Write|MultiEdit|WebFetch|WebSearch|CallMcpTool",
+        "matcher": "Edit|Write|MultiEdit|WebFetch|WebSearch|CallMcpTool",
+        "command": "./hooks/run-hook.cmd post-tool-trace"
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "matcher": "Shell",
+        "command": "./hooks/run-hook.cmd post-tool-trace"
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|WebFetch|WebSearch|CallMcpTool",
         "command": "./hooks/run-hook.cmd post-tool-trace"
       }
     ],
