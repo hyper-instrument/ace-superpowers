@@ -354,6 +354,31 @@ def format_memory_message(entity_type: str, context: dict, memory_data: dict) ->
     return "\n".join(lines)
 
 
+def _tool_response(data: dict) -> dict:
+    """兼容真实 payload（tool_response）与旧测试形状（tool_result）。"""
+    resp = data.get("tool_response")
+    if not isinstance(resp, dict):
+        resp = data.get("tool_result")
+    return resp if isinstance(resp, dict) else {}
+
+
+def _succeeded(data: dict, tool_response: dict) -> bool:
+    """判定本次工具调用是否成功。
+
+    真实环境：成功走 PostToolUse，失败走独立的 PostToolUseFailure 事件，
+    事件名本身即信号；tool_response 里没有 exit_code。据此不能按
+    ``get("exit_code", -1)`` 判断——默认值会把每一次成功都当成失败，
+    记忆注入在生产上从不触发。
+    兼容旧形状：显式给了 exit_code 时以它为准。
+    """
+    if data.get("hook_event_name") == "PostToolUseFailure":
+        return False
+    exit_code = tool_response.get("exit_code")
+    if isinstance(exit_code, int):
+        return exit_code == 0
+    return True
+
+
 def main():
     """Main entry point - reads PostToolUse data from stdin."""
     # Ensure ACE_ROOT is in path for src imports
@@ -367,18 +392,15 @@ def main():
 
     tool_name = data.get("tool_name", "")
     tool_input = data.get("tool_input", {})
-    tool_result = data.get("tool_result", {})
 
     # Only process successful Bash commands
     if tool_name != "Bash":
         sys.exit(0)
 
-    command = tool_input.get("command", "")
-    exit_code = tool_result.get("exit_code", -1)
-
-    # Only process successful commands (exit 0)
-    if exit_code != 0:
+    if not _succeeded(data, _tool_response(data)):
         sys.exit(0)
+
+    command = tool_input.get("command", "")
 
     # Check if this command triggers memory injection
     should_inject, entity_type, context = should_inject_memory(command)
