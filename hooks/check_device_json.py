@@ -21,6 +21,7 @@ simulator_class，随框架演进漂移成与 `ace device validate` **结论相�
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -62,8 +63,13 @@ def _find_template() -> str:
     )
 
 
-def _strict_errors(data: dict, device_dir: Path) -> list[str]:
-    """把校验完全委派给 ace 包；取不到 ace 时不做本地兜底（宁可放过，不给错标准）。"""
+def _strict_errors(data: dict, device_dir: Path) -> list[str] | None:
+    """把校验完全委派给 ace 包；取不到 ace 时返回 None 表示「没查」。
+
+    ``None`` 和 ``[]`` 必须分开：都当成空列表的话，装不到 ace 的机器上每份
+    device.json 都会拿到一个「通过 sdk_install 标准校验」的绿勾 —— 恰恰是本
+    hook 要拦的那种违规文件也照样绿。宁可放过，但不能谎报已查。
+    """
     metadata = data.get("metadata") if isinstance(data, dict) else None
     if metadata is not None and not isinstance(metadata, dict):
         return ["metadata 必须是对象"]
@@ -78,7 +84,7 @@ def _strict_errors(data: dict, device_dir: Path) -> list[str]:
             "装好 ACE 后本 hook 才能给出与 `ace device validate` 一致的结论。",
             file=sys.stderr,
         )
-        return []
+        return None
 
     return sdk_install_errors(metadata, device_dir=device_dir)
 
@@ -120,44 +126,90 @@ def _path_from_stdin() -> str:
     return found[0] if found else ""
 
 
-def main() -> int:
-    if len(sys.argv) >= 2:
-        path = Path(sys.argv[1])
-    else:
-        p = _path_from_stdin()
-        if not p:
-            return 0  # 输入里没有 device.json 路径，no-op
-        path = Path(p)
-    if path.name != "device.json":
-        return 0  # 非 device.json，no-op
-
+def _build_report(path: Path) -> tuple[str, int]:
+    """校验 *path*，返回（给人/agent 看的报告, 退出码）。"""
     try:
-        raw = path.read_text(encoding="utf-8")
-        data = json.loads(raw)
+        data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        print(f"❌ device.json 读取/解析失败: {exc}")
-        print("\n标准模板（请对照修正）:\n" + _find_template())
-        return 1
+        return (
+            f"❌ device.json 读取/解析失败: {exc}\n\n标准模板（请对照修正）:\n{_find_template()}",
+            1,
+        )
 
     errors = _strict_errors(data, path.parent)
     name = str(data.get("name") or "") if isinstance(data, dict) else ""
     ace_out = _ace_validate(name)
+    validate_block = f"\n\n`ace device validate {name}`:\n{ace_out}" if ace_out else ""
+
+    if errors is None:
+        return (
+            f"⚠️ 未能校验 device.json（{name or path}）：本机取不到 "
+            "`ace.core.devices.sdk_install`，sdk_install 规则一条都没查。"
+            "请勿据此认为文件合规。" + validate_block,
+            0,
+        )
 
     if not errors:
-        msg = f"✅ device.json 通过 sdk_install 标准校验（{name or path}）。"
-        if ace_out:
-            msg += f"\n\n`ace device validate {name}`:\n{ace_out}"
-        print(msg)
-        return 0
+        return (f"✅ device.json 通过 sdk_install 标准校验（{name or path}）。" + validate_block, 0)
 
-    print(f"❌ device.json 不符合标准模板（{name or path}）：")
-    for e in errors:
-        print(f"  - {e}")
-    if ace_out:
-        print(f"\n`ace device validate {name}`:\n{ace_out}")
-    print("\n请严格对照下方标准模板修正 metadata.sdk_install，改完重写文件触发再次校验：\n")
-    print(_find_template())
-    return 1
+    listed = "\n".join(f"  - {e}" for e in errors)
+    return (
+        f"❌ device.json 不符合标准模板（{name or path}）：\n{listed}{validate_block}"
+        "\n\n请严格对照下方标准模板修正 metadata.sdk_install，改完重写文件触发再次校验：\n\n"
+        + _find_template(),
+        1,
+    )
+
+
+def _emit_for_hook(report: str) -> None:
+    """按当前 IDE 的 schema 包装报告，让它真的回灌到 agent 的上下文里。
+
+    两家的字段名不同，且都会静默忽略不认识的形状 —— 直接打纯文本的话 hook 照常
+    退出 0、日志里什么都不缺，只是 agent 永远看不到这份报告，而"让 agent 对照标准
+    自纠"正是本 hook 存在的唯一理由。
+
+    形状由 ``ACE_HOOK_SCHEMA`` 显式指定，调用方最清楚自己是谁。不靠嗅探
+    ``CURSOR_*``：Claude 跑在 Cursor 的终端里时那些变量同样在场，于是 Claude 会
+    拿到 Cursor 的形状 —— 一个不会报错、只是永远不生效的错法。
+    """
+    schema = os.environ.get("ACE_HOOK_SCHEMA", "").strip().lower()
+    if schema not in ("cursor", "claude"):
+        schema = "cursor" if os.environ.get("CURSOR_PLUGIN_ROOT") else "claude"
+
+    if schema == "cursor":
+        payload = {"additional_context": report}
+    else:
+        payload = {
+            "hookSpecificOutput": {
+                "hookEventName": "PostToolUse",
+                "additionalContext": report,
+            }
+        }
+    print(json.dumps(payload, ensure_ascii=False))
+
+
+def main() -> int:
+    """argv 给路径 = CLI 模式（纯文本 + 真实退出码）；stdin 喂 JSON = hook 模式。"""
+    from_stdin = len(sys.argv) < 2
+    if from_stdin:
+        p = _path_from_stdin()
+        if not p:
+            return 0  # 输入里没有 device.json 路径，no-op
+        path = Path(p)
+    else:
+        path = Path(sys.argv[1])
+    if path.name != "device.json":
+        return 0  # 非 device.json，no-op
+
+    report, code = _build_report(path)
+    if not from_stdin:
+        print(report)
+        return code
+
+    # hook 模式一律退出 0：违规要靠回灌的报告让 agent 自纠，用非零码把工具调用
+    # 标成失败只会让宿主以为"写文件失败了"，那是另一回事。
+    _emit_for_hook(report)
+    return 0
 
 
 if __name__ == "__main__":

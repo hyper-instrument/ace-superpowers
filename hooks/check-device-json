@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # PostToolUse hook wrapper for Cursor — delegates to the Python implementation.
-# Cursor pipes JSON to stdin; the Python script reads it.
+# Cursor pipes JSON to stdin; the Python script reads it and answers with the
+# JSON shape Cursor consumes.
+#
+# The shape is stated rather than sniffed: this file only ever runs on Cursor's
+# behalf, and guessing from CURSOR_* would misfire whenever another host runs
+# inside a Cursor terminal.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-exec python3 "${SCRIPT_DIR}/check_device_json.py" "$@"
+ACE_HOOK_SCHEMA=cursor exec python3 "${SCRIPT_DIR}/check_device_json.py" "$@"
