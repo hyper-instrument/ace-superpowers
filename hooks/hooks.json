@@ -52,6 +52,16 @@
             "timeout": 60
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${ACE_ROOT}/.venv/bin/python\" \"${CLAUDE_PLUGIN_ROOT}/hooks/check_device_json.py\"",
+            "timeout": 90
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [
