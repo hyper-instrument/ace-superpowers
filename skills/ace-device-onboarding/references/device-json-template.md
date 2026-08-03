@@ -135,12 +135,27 @@ capabilities and parameters. Its own `capabilities`, `capability_schemas`, and
 }
 ```
 
-For a project-local SDK, use a portable environment-based path:
+For a project-local SDK, use a plain path relative to the **project root**:
 
 ```json
 "sdk_install": {
   "method": "local",
-  "package": "${ACE_PROJECT_ROOT}/path/to/sdk",
+  "package": "path/to/sdk",
+  "import_name": ["sdk_top_level_module"]
+}
+```
+
+The local path goes in `package` — `path` is only valid inside an `extra_packages[]` entry
+and is rejected at the top level. Avoid `${ACE_PROJECT_ROOT}/...`: that variable is unset
+outside the CLI wrapper, and an unexpanded `${...}` is a hard error rather than a guess.
+
+For a shared wheel, use OSS with an immutable object key and checksum:
+
+```json
+"sdk_install": {
+  "method": "oss",
+  "key": "vendor/dist/sdk-1.2.3-py3-none-any.whl",
+  "sha256": "<wheel-sha256>",
   "import_name": ["sdk_top_level_module"]
 }
 ```
@@ -158,10 +173,14 @@ Key principles:
 - `has_simulator` describes whether this leaf is simulated; keep the safe template
   default `false` for physical devices and set it to `true` only for simulator leaves.
 - Ordinary SDK operations live in `device.py`; `node.py` is optional custom logic.
-- `metadata.sdk_install` is **optional**: a self-contained backend (logic embedded in
-  `device.py`, like `computer/simulator`) ships none and still runs. Add it only for a
-  reproducible/shared install; for a project-local SDK use `method: "local"` +
-  `${ACE_PROJECT_ROOT}/...`.
+- `metadata.sdk_install` may be omitted **only** for a genuinely self-contained backend
+  (logic embedded in `device.py`, nothing imported beyond the stdlib and `ace` — see
+  `computer/simulator`). The moment `device.py` imports an SDK, declare it: `method: "local"`
+  with a project-root-relative `package` for a local SDK, `method: "oss"` with object `key` +
+  SHA256 for a shared wheel, `method: "pip"` for a package/Git URL. Always include
+  `import_name` — it is how ACE decides whether the SDK is already installed.
+- `device.py` must never touch `sys.path` or derive a root from `ACE_ROOT` / counted
+  `.parent` levels. Import ACE from `ace.core.*` and the SDK from its `import_name`.
 - Prefer the neutral `device_backend` key over the deprecated bare `simulator` key, and
   `metadata.sdk_install` over `metadata.sdk` / `metadata.sdk_path`. `simulator_id` and
   `has_simulator` are valid simulator fields (see `computer/simulator`), not errors.

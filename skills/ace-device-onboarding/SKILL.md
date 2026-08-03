@@ -91,13 +91,68 @@ Minimum runnable form — **get `ace workflow run` GREEN first, polish later**:
 - **device.py**: a `DeviceBackend` (a.k.a. `SimulatorDevice`) subclass. If the device is
   **stateless with no lifecycle**, keep it minimal: no `_DEFAULT_STATE`, no `inject_fault`,
   no speed knobs; `connect`/`disconnect` can be no-ops. Either embed the logic inline (like
-  `computer/simulator`) or import a local SDK by adding its dir to `sys.path` (again like
-  `computer/simulator`, which does this for ACE core).
-- **`metadata.sdk_install` is OPTIONAL.** A self-contained simulator ships **no**
-  `sdk_install` and still runs — so omit it when the backend is self-contained or the SDK is
-  already reachable. Only add it (`method: "local"`, `package: "${ACE_PROJECT_ROOT}/<sdk-dir>"`,
-  `import_name: [...]`) when you want reproducible install / sharing. **Never block
-  onboarding trying to formalize a pip package** for a hard-to-package local SDK.
+  `computer/simulator`) or `import` the SDK by its declared `import_name` — nothing else.
+- **NEVER do path surgery in `device.py`.** No `sys.path.insert`, no `ACE_ROOT`, no counting
+  `.parent` levels to guess a root. Two hard rules, no exceptions:
+  - ACE base classes come from the installed canonical package: `from ace.core.devices.base
+    import DeviceBackend` (or `ace.core.simulator.base`). See `devices/fibsem/device_base.py`
+    for the reference import and why it must be `ace.` and not `src.`.
+  - The SDK is reached by **installing it** via `sdk_install`, then plain
+    `from <import_name> import ...`.
+
+  Why this is non-negotiable: a root-guessing variable has to be the ACE **repo** root for
+  the base-class import but the calling **project** root for the SDK path. Those are
+  different directories, so no single value satisfies both — a device written that way
+  cannot work, and the failure surfaces much later as `No backend available for device`.
+
+  There is a second, quieter cost. A module-level `sys.path.insert` runs at **import** time,
+  which makes the SDK look importable, which makes ACE conclude the SDK is already installed
+  and **skip installing it**. The device passes validate and the workflow runs green while the
+  SDK was never actually installed — so the hack does not merely violate a style rule, it
+  disables `sdk_install` entirely and hides the fact.
+
+  Sibling and family-level modules need no `sys.path` handling either: the loader lends the
+  device directory and its parent while executing `device.py`, so `from device_base import ...`
+  just works (that is how the `fibsem` leaves share one base class).
+- **Probe with the ACE interpreter, never bare `python3`.** ACE lives in its own virtualenv, so
+  the system interpreter cannot import `ace` — probing with `python3` "proves" that `from
+  ace.core... import ...` is broken and that path surgery is required. That conclusion is an
+  artifact of the wrong interpreter. Use the `ace` CLI, or the venv's Python
+  (`$(dirname $(command -v ace))/../lib/.../python`, or `/opt/ace/.venv/bin/python` in the
+  standard container layout). If an import check disagrees with the rules above, suspect the
+  interpreter first.
+- **`ace device validate` is the authority, and it is cheap.** It enforces the `sdk_install`
+  key discipline *and* the `device.py` rules above, naming the offending line. Run it as soon
+  as `device.json` + `device.py` exist, before building nodes or workflows — it converts a
+  late, confusing `No backend available` into an immediate, actionable message. Do not
+  hand-roll your own import experiments in place of it.
+- **`metadata.sdk_install` is required whenever `device.py` imports anything it does not
+  already have.** Omit it only when the backend is genuinely self-contained (nothing beyond
+  the stdlib and `ace`). If `device.py` does `from <sdk> import ...`, declare it:
+  `method: "local"`, `package: "<sdk-dir>"`, `import_name: ["<top-level module>"]`.
+  Skipping it does not "defer" the problem — the SDK then never gets installed at all, and
+  `sys.path` hacks are the only way left, which rule above forbids.
+- **`sdk_install` key discipline.** The local SDK path goes in **`package`**, never `path`
+  (`path` is only valid inside an `extra_packages[]` entry and is silently ignored at the top
+  level). Relative paths resolve against the **project root**, not the device directory.
+  Prefer a plain project-relative path (`docs/demo/foo_sdk`) over `${ACE_PROJECT_ROOT}/...`:
+  the variable is unset outside the CLI wrapper and an unexpanded `${...}` is a hard error.
+- **Local SDK location is an invariant.** When the user, a setup step, or a prior tool call
+  says where the SDK was copied/provided, record that exact location as `SDK_LOCATION` before
+  creating assets and use the same location throughout onboarding. Do **not** rediscover it
+  from the Store directory, `device.json` location, or a guessed `../` path. Note whether the
+  location you were given is relative to the **project root** or to your shell's cwd, and do
+  not silently re-prefix it.
+- **Use the shortest known-good shape.** For a new stateless local SDK, start with one
+  standalone device (`devices/<id>/device.json` + `device.py`), with capabilities on that
+  device. Do not introduce `type_ref`, a family `type.json`, custom `node.py`, or unrelated
+  node assets unless the user explicitly needs them.
+- **No architecture archaeology.** Before writing the first asset, read only: the supplied SDK,
+  `ace store info`, one matching local example (`computer/simulator` for a stateless software
+  backend), and the referenced template. Then write the minimal assets. Do not enumerate
+  unrelated devices/workflows, scan `/opt/ace` or `/`, or reverse-engineer `registry.py` /
+  workflow internals. If the first run fails, inspect that error and the generated asset; fix
+  the declared SDK location or asset shape directly, then retry once.
 - **workflow**: a **flat file** `workflows/<workflow-id>.json` — **NOT** a subdirectory.
   `ace workflow list` only indexes flat `workflows/*.json`; a workflow saved as
   `workflows/<id>/<id>.json` still *runs by id* but will **NOT appear in `ace workflow
@@ -231,16 +286,29 @@ each before declaring done:
 - **Mixed device shape**: don't mix standalone and family-backed. For a single
   implementation, standalone `devices/<device-id>/` is simplest; only add
   `devices/<family>/type.json` + `type_ref` when there is a real family of implementations.
-- **Workflow in a subdirectory**: `ace workflow list` only indexes flat `workflows/*.json`.
-  A workflow saved as `workflows/<id>/<id>.json` runs by id but never shows in `list`. Save
-  it as a flat `workflows/<id>.json`.
+- **Workflow in a subdirectory**: the Store scan is recursive, so `workflows/<id>/<id>.json`
+  is still found — but flat `workflows/<id>.json` is the convention and keeps `list` output
+  predictable. Save it flat.
 - **Field naming**: prefer the neutral backend key `device_backend` over the deprecated
   bare `simulator` key, and `metadata.sdk_install` over `metadata.sdk`/`metadata.sdk_path`.
   BUT `simulator_id` and `has_simulator` are **valid simulator fields** used by current
   examples (`computer/simulator`) — do not treat them as errors.
-- **Non-portable SDK path**: `sdk_install` is optional (see Phase 2). If you do declare it
-  for a project-local SDK, use `method: "local"`, `package: "${ACE_PROJECT_ROOT}/<sdk-dir>"`,
-  `import_name: [...]` — never a hardcoded absolute container path.
+- **`sys.path` surgery in `device.py`**: the single most expensive failure mode (see Phase 2).
+  `sys.path.insert` + an `ACE_ROOT`/`.parent`-counted root cannot work, because that one
+  variable would have to be the ACE repo root and the calling project root simultaneously.
+  Worse, it silently disables `sdk_install`: the import-time insert makes the SDK look
+  installed, so ACE skips installing it and everything passes while the SDK is absent.
+  Import ACE from `ace.*` and the SDK from its installed `import_name`.
+- **Probing with the wrong interpreter**: bare `python3` cannot import `ace` (ACE is in a
+  venv), which makes path surgery look necessary. Probe with the venv Python or the `ace` CLI.
+- **`sdk_install` written but ignored**: the top level accepts only `method`, `package`,
+  `key`, `sha256`, `import_name`, `extra_packages`. Writing `path` instead of `package` means
+  nothing gets installed. Missing `import_name` means ACE cannot tell whether the SDK is
+  installed. Both now fail validation rather than passing silently.
+- **Non-portable SDK path**: for a project-local SDK use `method: "local"` with a plain
+  project-root-relative `package` (e.g. `docs/demo/foo_sdk`) plus `import_name: [...]` —
+  never a hardcoded absolute container path, and avoid `${ACE_PROJECT_ROOT}/...` (unset
+  outside the CLI wrapper; an unexpanded `${...}` is rejected).
 - **Workflow action params**: runtime arguments go under `params` only; do not put them
   under `inputs` / `outputs` / `node` on an action node.
 - **Unneeded `node.py`**: ordinary SDK operations belong in `device.py`; add `node.py`
