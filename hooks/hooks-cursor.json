@@ -22,6 +22,11 @@
       {
         "matcher": "Edit|Write|MultiEdit|WebFetch|WebSearch|CallMcpTool",
         "command": "./hooks/run-hook.cmd post-tool-trace"
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "command": "./hooks/run-hook.cmd check-device-json",
+        "timeout": 90
       }
     ],
     "postToolUseFailure": [
