@@ -122,9 +122,9 @@ lark-cli base +field-update --as user --base-token <base> --table-id <table> \
 ```bash
 cat > batch.json << 'EOF'
 {
-  "fields": ["问题描述", "失败原因", "复现路径", "变更文件", "类型"],
+  "fields": ["问题描述", "失败原因", "复现路径", "变更文件", "类型", "指定人"],
   "rows": [
-    ["[project-slug] xxx", "root cause", "cmd", "file:line", "缺陷"]
+    ["[project-slug] xxx", "root cause", "cmd", "file:line", "缺陷", [{"id":"ou_xxx"}]]
   ]
 }
 EOF
@@ -201,7 +201,27 @@ lark-cli ... --json @./batch.json
 lark-cli update
 ```
 
-## 11. lark-cli 1.0.68+ 文档/表格/消息 API 已切到 v2
+---
+
+## 11. 人员字段必须写 open_id 对象数组
+
+### 现象
+给 `指定人` 传姓名字符串（如 `"刘鹏"`）或裸 open_id（如 `"ou_xxx"`）时，批量写入失败或无法解析人员。
+
+### 正确姿势
+人员字段统一传对象数组，即使字段为单选：
+
+```json
+{
+  "指定人": [{"id":"ou_xxx"}]
+}
+```
+
+`system-quality-review` 的「指定人」由 `agent-discovery` 的 Git 身份映射得出；映射未命中才回落项目 Owner，并在报告附录说明。不得猜测 open_id，也不得覆盖已有 bug 记录的人工指定人。
+
+---
+
+## 12. lark-cli 1.0.68+ 文档/表格/消息 API 已切到 v2
 
 ### 现象
 - `lark-cli docs +create --markdown @./report.md --wiki-node ...` 报错：`docs +create is v2-only; the old v1 interface has been shut down; legacy v1 flag(s) --markdown, --wiki-node are no longer supported`
@@ -231,7 +251,7 @@ lark-cli update
 
 ---
 
-## 12. Hyper-FIB Docker 部署：输出目录必须落在 `h5-result` 共享卷
+## 13. Hyper-FIB Docker 部署：输出目录必须落在 `h5-result` 共享卷
 
 ### 现象
 - 用 `deploy/production/deploy_docker_stack.sh` 启动 hyper-fib 后，CLI 离线运行 `AcquireImageNode` 等会报：
