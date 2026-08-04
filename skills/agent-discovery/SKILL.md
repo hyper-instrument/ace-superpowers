@@ -46,6 +46,32 @@ user-invocable: true
 1. 在群里 @ 兜底联系人（刘鹏）询问该服务的 owner。
 2. 拿到答案后，**立即把新路由写进上表，commit + push 本仓库**——每日 session 全新、跨机器唯一共享的记忆就是本文件（同 system-quality-review 的路由登记协议：只在会话里问到而不写回 = 没解决）。
 
+## Bug 指定人：Git 身份 → 飞书用户映射
+
+`ace:system-quality-review` 写入 buglist 的「指定人」时，按本表把 Git 作者转换成飞书 `open_id`。`上报人`仍代表发现问题的 review agent；「指定人」代表应跟进修复的人。
+
+### 匹配顺序
+
+1. 若根因已归因到引入问题的 commit，优先使用该 commit 作者。
+2. 否则取根因文件最近 3 次非 merge commit 中第一个可映射的人类作者；文件没有历史时查所在目录。
+3. 对作者依次匹配 Git email、GitHub login/noreply login、Git author name。
+4. 仍未命中时回落到本 skill 的项目 Owner 路由表，并在 review 报告注明 `指定人=项目 Owner 回落`。
+
+跳过 bot/自动提交身份：`*[bot]*`、`noreply@anthropic.com`、`claude-aisi@multica.ai`、`devin-ai-integration[bot]`、`lzy101@example.com`、`auto-fix@multica.ai`。`ace-superpowers/` 下的文件必须在该子仓库内查询 Git 历史。
+
+| 姓名 | 飞书 open_id | Git emails | Git names / logins |
+|------|-------------|------------|-------------------|
+| 刘鹏 | `ou_aa1da0fb8d5b42eb69389ba4eca58303` | `liupeng@dp.tech`, `liupeng.dalian@gmail.com` | `Liu Peng`, `FingerLiu`, `liupeng` |
+| 苗宏图 | `ou_f4b53eba875ad32fbe8e016c94de2180` | `miaohongtu@dp.tech`, `30738614+miaohongtu@users.noreply.github.com` | `miaohongtu` |
+| 段智峰 | `ou_1afb6099b902c8b28052bb48e166278a` | `1224702714@qq.com`, `71871695+zhifeng-d@users.noreply.github.com` | `af`, `段智峰`, `SanMao__`, `zhifeng-d` |
+| 张泽中 | `ou_7d4395c96b4c615901a6cc31a39930cf` | `jack.zezhong.zhang@gmail.com` | `Zezhong Zhang`, `zezhong zhang`, `zezhong-zhang` |
+| 杜卓然 | `ou_da4b3a6a463472241d91e56be0011822` | `duranze@163.com`, `duranzhuo@gmail.com` | `duranze`, `Duranze` |
+| 陈桂森 | `ou_3752ca8840654d9f36976aaba1457bf6` | `50392441+chenguisen@users.noreply.github.com`, `1747916422@qq.com` | `chenguisen` |
+| 李一 | `ou_20fb9e600dc9202023e69120e6af56c6` | `1094212232@qq.com` | `李一` |
+| 许科 | `ou_961a8fd0bddbf2dbd24594a6361cceb5` | `xuke@dp.tech` | `dp-xk` |
+| 杨天宇 | `ou_fc78ccb4b78c1cfe6680bb9e042d2a18` | `3318488446@qq.com` | `britenyyang`, `briteny-pwn` |
+| 詹夏瑞 | `ou_1f8198dc46090ee1e9db72517bf2e38f` | `xiaruizhan@gmail.com` | `Xia Ruizhan`, `xiaruizhan` |
+
 ## 用法 1 — bug 上报
 
 1. 从用户/调用方描述中识别服务名，查路由表拿 owner。

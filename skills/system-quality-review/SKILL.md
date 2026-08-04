@@ -248,11 +248,22 @@ lark-cli docs +create --as user --wiki-node <wiki_node> \
 
 ```bash
 # 1. 先拿字段结构（绝不猜字段名）
-lark-cli base +field-list --as bot --base-token <base> --table-id <table>
+lark-cli base +field-list --as user --base-token <base> --table-id <table>
 
 # 2. 执行下方「每日去重协议」后，只批量写入真正的新增（单批 ≤200 行）
 lark-cli base +record-batch-create --as user --base-token <base> --table-id <table> --json @./batch.json
 ```
+
+### 5.0 指定人推断
+
+写入每条新增或回归 bug 前，按 `ace:agent-discovery` 的「Bug 指定人：Git 身份 → 飞书用户映射」确定「指定人」：
+
+1. 根因已归因到引入 commit 时，取该 commit 的作者。
+2. 否则查根因文件最近 3 次非 merge commit；文件无历史时查所在目录。`ace-superpowers/` 下文件在该子仓库内执行 Git 查询。
+3. 跳过 bot/自动提交身份，按 agent-discovery 的映射表转换为 `open_id`。
+4. 未命中时回落到被审查项目的 Owner，并在报告附录写 `指定人=项目 Owner 回落`。
+
+报告附录为每条写入记录保留依据：`指定人：<file|commit> → <Git 身份> → <姓名>（commit/file/directory/owner）`。
 
 ### 每日去重协议（定时执行必须遵守）
 
@@ -262,13 +273,13 @@ lark-cli base +record-batch-create --as user --base-token <base> --table-id <tab
 2. **稳定指纹**：新发现的每个问题生成 `[<项目>-<锚点slug>]` 前缀写在问题描述开头。slug 从**根因锚点**派生：核心文件名 + 缺陷本质，如 `[HF-session-manager-async-url]`、`[ACE-launcher-mcp-config-argv]`。**禁止用 P0/P1 轮次编号或日期当 slug**（编号会随每轮排序漂移）；指纹一经写入永不更改。
 3. **两级匹配**：新发现先按指纹与存量精确匹配；未命中再与所有**未关闭**记录做语义比对——同一文件 + 同一症状/根因 = 同一问题（存量旧格式前缀如 `[HF-P0.1]` 靠这一级兜住）。
 4. **处置规则**：
-   - 命中且未关闭（待修复/修复中/待审核）→ **跳过不写**，计入卡片"仍存在 N"。
+   - 命中且未关闭（待修复/修复中/待审核）→ **跳过不写、不覆盖人工指定的指定人**，计入卡片"仍存在 N"。
    - 命中但已关闭（修复完成/已确认/暂不修复）且今日复现 → **回归**：新建记录，问题描述加 `[回归]` 标记，失败原因里引用旧 record_id；计入"回归 R"。
    - 无命中 → 新增写入；计入"新增 M"。
 5. **反向核销**：存量未关闭、但今日实测未复现的问题 → **不改记录**（人工确认修复才关闭），卡片单列"疑似已修复待确认 K 条"。判「未复现」必须依据带 `--fresh`（重打基座）的那一轮 e2e——复用旧镜像的绿色不构成修复证据，见 Phase 1.1 起手式。
 6. **卡片只报增量**：`新增 M / 仍存在 N / 回归 R / 疑似修复 K`，附链路通过数与测试基线和上一轮的对比。
 
-buglist 字段映射约定：`问题描述`（[P0-x.y] 前缀 + 一句话）、`失败原因`（根因 + 验收标准）、`复现路径`（精确命令）、`变更文件`（file:line + 修法）、`类型`（缺陷/优化/文档）、`重要程度(P0优先)`、`修复难度(L1 最难)`、`修复状态`=待修复、`环境`、`上报人`=[{"id":"ou_aa1da0fb8d5b42eb69389ba4eca58303"}]。
+buglist 字段映射约定：`问题描述`（[P0-x.y] 前缀 + 一句话）、`失败原因`（根因 + 验收标准）、`复现路径`（精确命令）、`变更文件`（file:line + 修法）、`类型`（缺陷/优化/文档）、`重要程度(P0优先)`、`修复难度(L1 最难)`、`修复状态`=待修复、`环境`、`上报人`=[{"id":"ou_aa1da0fb8d5b42eb69389ba4eca58303"}]、`指定人`=[{"id":"<open_id>"}]（由 5.0 推断；人员字段必须为对象数组，禁止写姓名字符串）。
 
 ## Phase 6 — 群通知（卡片）
 
