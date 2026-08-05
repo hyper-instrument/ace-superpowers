@@ -20,18 +20,18 @@ user-invocable: true
 
 | 服务 | 类型 | 名称 | id（open_id / bot_id） |
 |------|------|------|------------------------|
-| ace | 人 | 刘鹏 | `ou_aa1da0fb8d5b42eb69389ba4eca58303` |
-| hyper-data | 人 | 杜卓然 | `ou_da4b3a6a463472241d91e56be0011822` |
-| hyper-fib | 人 | 苗宏图 | `ou_f4b53eba875ad32fbe8e016c94de2180` |
-| ace-benchmark | 人 | 杨天宇 | `ou_fc78ccb4b78c1cfe6680bb9e042d2a18` |
+| ace | 人 | 刘鹏 | `ou_ae88f54c022ffb13e2029f286bccba09` |
+| hyper-data | 人 | 杜卓然 | `ou_6ba1e5fa2fb875264d527131306f5c4b` |
+| hyper-fib | 人 | 苗宏图 | `ou_1845de590f691156796171b24cba6f37` |
+| ace-benchmark | 人 | 杨天宇 | `ou_c2bf8153c068ca73823b678e82c749d8` |
 
 - **服务名宽松匹配**：`hyper-data` / `hyperdata` / `hyper_data` 视为同一服务，其余同理。
 - **默认群**：HyperEM `oc_335cc3ff0ab0f353fa920fed387d5162`（外部群，**发消息一律 `--as bot`**）。
-- **兜底联系人**：刘鹏 `ou_aa1da0fb8d5b42eb69389ba4eca58303`。
+- **兜底联系人**：刘鹏 `ou_ae88f54c022ffb13e2029f286bccba09`。
 
 ### 组织级审批人
 
-**张泽中 `ou_7d4395c96b4c615901a6cc31a39930cf`** 是整个组织的 owner。以下事项一律由他审批，@ 他确认后再推进：
+**张泽中 `ou_9c3654e18dd696002b147de486da9ed9`** 是整个组织的 owner。以下事项一律由他审批，@ 他确认后再推进：
 
 - **流程 / 规范的大变更**（如研发流程、发布规范、Sprint 机制、评审标准的调整）。
 - **跨项目的申请与协调**（涉及多个 ace / hyper-* 服务的资源、依赖、排期或方案决策）。
@@ -52,25 +52,27 @@ user-invocable: true
 
 ### 匹配顺序
 
-1. 若根因已归因到引入问题的 commit，优先使用该 commit 作者。
+1. **引入 commit / PR 作者（最高优先）**：根因已归因到 commit → `git show -s --format='%an <%ae>' <sha>` 取该提交作者；提到 `(#N)` / PR 链接 → `gh pr view N --json author` 取 PR author。squash/merge 进 main 的外层提交作者即人类作者；若外层或内部作者是 bot 但 PR author 是人类 → 用 PR author。**已有可映射的引入作者时禁止回落项目 Owner。**
 2. 否则取根因文件最近 3 次非 merge commit 中第一个可映射的人类作者；文件没有历史时查所在目录。
 3. 对作者依次匹配 Git email、GitHub login/noreply login、Git author name。
-4. 仍未命中时回落到本 skill 的项目 Owner 路由表，并在 review 报告注明 `指定人=项目 Owner 回落`。
+4. 仅当 1–3 全部得不到可映射人类作者时，才回落本 skill 的项目 Owner 路由表，并在 review 报告注明 `指定人=项目 Owner 回落（原因：…）`。
 
-跳过 bot/自动提交身份：`*[bot]*`、`noreply@anthropic.com`、`claude-aisi@multica.ai`、`devin-ai-integration[bot]`、`lzy101@example.com`、`auto-fix@multica.ai`。`ace-superpowers/` 下的文件必须在该子仓库内查询 Git 历史。
+跳过 bot/自动提交身份：`*[bot]*`、`noreply@anthropic.com`、`claude-aisi@multica.ai`、`devin-ai-integration[bot]`、`lzy101@example.com`、`auto-fix@multica.ai`、`auto-fix@hyper-instrument.local`、`ace-auto-fix`。`ace-superpowers/` 下的文件必须在该子仓库内查询 Git 历史。
 
 | 姓名 | 飞书 open_id | Git emails | Git names / logins |
 |------|-------------|------------|-------------------|
-| 刘鹏 | `ou_aa1da0fb8d5b42eb69389ba4eca58303` | `liupeng@dp.tech`, `liupeng.dalian@gmail.com` | `Liu Peng`, `FingerLiu`, `liupeng` |
-| 苗宏图 | `ou_f4b53eba875ad32fbe8e016c94de2180` | `miaohongtu@dp.tech`, `30738614+miaohongtu@users.noreply.github.com` | `miaohongtu` |
-| 段智峰 | `ou_1afb6099b902c8b28052bb48e166278a` | `1224702714@qq.com`, `71871695+zhifeng-d@users.noreply.github.com` | `af`, `段智峰`, `SanMao__`, `zhifeng-d` |
-| 张泽中 | `ou_7d4395c96b4c615901a6cc31a39930cf` | `jack.zezhong.zhang@gmail.com` | `Zezhong Zhang`, `zezhong zhang`, `zezhong-zhang` |
-| 杜卓然 | `ou_da4b3a6a463472241d91e56be0011822` | `duranze@163.com`, `duranzhuo@gmail.com` | `duranze`, `Duranze` |
-| 陈桂森 | `ou_3752ca8840654d9f36976aaba1457bf6` | `50392441+chenguisen@users.noreply.github.com`, `1747916422@qq.com` | `chenguisen` |
-| 李一 | `ou_20fb9e600dc9202023e69120e6af56c6` | `1094212232@qq.com` | `李一` |
-| 许科 | `ou_961a8fd0bddbf2dbd24594a6361cceb5` | `xuke@dp.tech` | `dp-xk` |
-| 杨天宇 | `ou_fc78ccb4b78c1cfe6680bb9e042d2a18` | `3318488446@qq.com` | `britenyyang`, `briteny-pwn` |
-| 詹夏瑞 | `ou_1f8198dc46090ee1e9db72517bf2e38f` | `xiaruizhan@gmail.com` | `Xia Ruizhan`, `xiaruizhan` |
+| 刘鹏 | `ou_ae88f54c022ffb13e2029f286bccba09` | `liupeng@dp.tech`, `liupeng.dalian@gmail.com` | `Liu Peng`, `FingerLiu`, `liupeng` |
+| 苗宏图 | `ou_1845de590f691156796171b24cba6f37` | `miaohongtu@dp.tech`, `30738614+miaohongtu@users.noreply.github.com` | `miaohongtu` |
+| 段智峰 | `ou_6ec29066ac3277303b6b4c71f188a8d0` | `1224702714@qq.com`, `71871695+zhifeng-d@users.noreply.github.com` | `af`, `段智峰`, `SanMao__`, `zhifeng-d` |
+| 张泽中 | `ou_9c3654e18dd696002b147de486da9ed9` | `jack.zezhong.zhang@gmail.com` | `Zezhong Zhang`, `zezhong zhang`, `zezhong-zhang` |
+| 杜卓然 | `ou_6ba1e5fa2fb875264d527131306f5c4b` | `duranze@163.com`, `duranzhuo@gmail.com` | `duranze`, `Duranze` |
+| 陈桂森 | `ou_c0a82f739cd4c84ee376d578923e8d2b` | `50392441+chenguisen@users.noreply.github.com`, `1747916422@qq.com` | `chenguisen` |
+| 李一 | `ou_cf59da6b9bcb987e009ebc26a5daa61d` | `1094212232@qq.com` | `李一` |
+| 许科 | `ou_d9991dad022c5eb697da92d7c85e54de` | `xuke@dp.tech` | `dp-xk` |
+| 杨天宇 | `ou_c2bf8153c068ca73823b678e82c749d8` | `3318488446@qq.com` | `britenyyang`, `briteny-pwn` |
+| 詹夏瑞 | `ou_89e7793be0a076980ffb0251fcf2107a` | `xiaruizhan@gmail.com` | `Xia Ruizhan`, `xiaruizhan` |
+
+> open_id 以 HyperEM 群 `chat.members` 实查为准（2026-08-05 刷新）。过期 id 会导致 @ 失败或 Base 人员字段显示异常；刷新后须同步 Owner 表、本映射表与下方 id 缓存。
 
 ## 用法 1 — bug 上报
 
@@ -136,35 +138,38 @@ lark-cli im +chat-messages-list --as bot --chat-id oc_335cc3ff0ab0f353fa920fed38
   --sort desc --page-size 1 --jq '.data.messages[0] | {message_id, mentions}'
 ```
 
-## id 速查缓存（HyperEM 群，2026-07-09 解析）
+## id 速查缓存（HyperEM 群，2026-08-05 实查刷新）
 
 路由表之外需要 @ 其他人时直接查这里，**不要再调 chat.members**（提速）。成员变动或 @ 解析失败时才按下节命令刷新本表。
 
-**人（21）：**
+**人：**
 
 | 姓名 | open_id |
 |------|---------|
-| 刘鹏 | `ou_aa1da0fb8d5b42eb69389ba4eca58303` |
-| 杜卓然 | `ou_da4b3a6a463472241d91e56be0011822` |
-| 苗宏图 | `ou_f4b53eba875ad32fbe8e016c94de2180` |
-| 张泽中 | `ou_7d4395c96b4c615901a6cc31a39930cf` |
-| 雨林中的山丘 | `ou_baa1a6ab965de22e49ce91bcc98683d3` |
-| 段智峰 | `ou_1afb6099b902c8b28052bb48e166278a` |
-| 陈桂森 | `ou_3752ca8840654d9f36976aaba1457bf6` |
-| 彭倩雯 | `ou_5880ba073ba6e54faf5b07cc9db0fba1` |
-| 鞠书波 | `ou_911c79147ab8e9243e5fba5577fba062` |
-| 梁聿 | `ou_b2e74ff01bb6760157c64c8b2ee2d21e` |
-| 赖弘龙 | `ou_8c8f4c3b38eb9bd8b83206763643dc8e` |
-| 颜啸峰 | `ou_429fd55faf9f6a245523e778f74647c3` |
-| 熊智恒 | `ou_6e9d0990a6128e4cc9a72d0c11f69b90` |
-| 宋知远 | `ou_18ccb6fed5f2336e88bdfe82f6e36fd7` |
-| 杨天宇 | `ou_fc78ccb4b78c1cfe6680bb9e042d2a18` |
-| 李一 | `ou_20fb9e600dc9202023e69120e6af56c6` |
-| 尤恺宇 | `ou_15fb04fb35d69f43a45bb1dea192f386` |
-| 黄俊晨 | `ou_d5809a4e5816eddbcd8df3e7a17028f7` |
-| 许科 | `ou_961a8fd0bddbf2dbd24594a6361cceb5` |
-| 曹阳 | `ou_6a3002a10a74b408842b9c54b2b6f3b8` |
-| 詹夏瑞 | `ou_1f8198dc46090ee1e9db72517bf2e38f` |
+| 刘鹏 | `ou_ae88f54c022ffb13e2029f286bccba09` |
+| 杜卓然 | `ou_6ba1e5fa2fb875264d527131306f5c4b` |
+| 苗宏图 | `ou_1845de590f691156796171b24cba6f37` |
+| 张泽中 | `ou_9c3654e18dd696002b147de486da9ed9` |
+| 雨林中的山丘 | `ou_bee535ac301bbe4d44bdef4d8b04eda4` |
+| 段智峰 | `ou_6ec29066ac3277303b6b4c71f188a8d0` |
+| 陈桂森 | `ou_c0a82f739cd4c84ee376d578923e8d2b` |
+| 彭倩雯 | `ou_14f3ccbaf168cc31ca9366af7b768268` |
+| 鞠书波 | `ou_e24ea0472a1b491ba5ed11d2494a0101` |
+| 梁聿 | `ou_07be1b6ad134ce5947903505a57e1ccd` |
+| 赖弘龙 | `ou_906b6dfe1dd1db4bb0c5b50214d374c0` |
+| 颜啸峰 | `ou_62dcefdb23c1db1418acfce4a6645927` |
+| 熊智恒 | `ou_5e79f6808e8355a528ba7fedf4011895` |
+| 宋知远 | `ou_523de5d193ef05d6c113ce19d9cc2c81` |
+| 杨天宇 | `ou_c2bf8153c068ca73823b678e82c749d8` |
+| 李一 | `ou_cf59da6b9bcb987e009ebc26a5daa61d` |
+| 尤恺宇 | `ou_9b2e4ac2f3c4cff35eead0c5adbfe217` |
+| 黄俊晨 | `ou_79322152d46d7eac9b1079e3c476d365` |
+| 许科 | `ou_d9991dad022c5eb697da92d7c85e54de` |
+| 曹阳 | `ou_45068c05bd3978662daa8e03426664fd` |
+| 詹夏瑞 | `ou_89e7793be0a076980ffb0251fcf2107a` |
+| 王玉 | `ou_38be90edf94132e3e6bb8e1cadc456d1` |
+
+> 群内另有重复身份：`张泽中` 备用 `ou_7e81c2935f1a816e5c306a68152d61fd`；`赖弘龙` 备用 `ou_6a4d365cf51d595300e2020626264add`。默认用上表主 id；@ 失败时再试备用。
 
 **bot（3）：**
 
@@ -179,9 +184,11 @@ lark-cli im +chat-messages-list --as bot --chat-id oc_335cc3ff0ab0f353fa920fed38
 - 群成员（人）的 open_id：`lark-cli im chat.members get --as bot --page-all --params '{"chat_id":"<chat_id>","member_id_type":"open_id"}'`——bot 身份可用，不需要 `contact:user:search` scope（该 scope 常缺）。
 - 群内 bot 的 bot_id：`lark-cli im chat.members bots --as bot --params '{"chat_id":"<chat_id>"}'`，返回的 `bot_id` 是 `ou_` 形式，可直接放进 at 标签。
 - owner 不在群里时先拉人进群或改走私聊，别对着群发一个群里不存在的 @（不会解析）。
+- **@ 解析失败或 Base 人员字段显示异常时，优先怀疑本文件 open_id 过期**，按上节命令刷新 Owner 表 + Git 映射表 + 本缓存后 commit。
 
 ## 已知坑
 
 - **外部群必须 `--as bot`**：HyperEM 是外部群，user 身份发送被平台拒（230027）；bot 不在群报 230002。前置条件链见 system-quality-review 的「已知坑」。
 - **@bot 可行**：用 `chat.members bots` 返回的 `ou_` 形式 bot_id 走 `<at user_id="...">`，已实测解析成功；不要用 `cli_` 开头的 app_id 放进 at 标签。
+- **过期 open_id**：2026-07-09 缓存曾全量过期（例如刘鹏旧 id `ou_aa1da0fb…`、张泽中旧 id `ou_7d4395c…`）；以 `chat.members` 实查为准。
 - 任何 lark-cli 操作报错，先查 `skills/system-quality-review/trouble_shooting.md`（scope、token 解析、@file 路径等通用坑都在那里）。

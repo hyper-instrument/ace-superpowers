@@ -256,14 +256,26 @@ lark-cli base +record-batch-create --as user --base-token <base> --table-id <tab
 
 ### 5.0 指定人推断
 
-写入每条新增或回归 bug 前，按 `ace:agent-discovery` 的「Bug 指定人：Git 身份 → 飞书用户映射」确定「指定人」：
+写入每条新增或回归 bug 前，按 `ace:agent-discovery` 的「Bug 指定人：Git 身份 → 飞书用户映射」确定「指定人」。**禁止在已有可映射引入作者时回落到项目 Owner**（曾误把 #342 / `08f59a76` 写成刘鹏，实为张泽中）。
 
-1. 根因已归因到引入 commit 时，取该 commit 的作者。
-2. 否则查根因文件最近 3 次非 merge commit；文件无历史时查所在目录。`ace-superpowers/` 下文件在该子仓库内执行 Git 查询。
-3. 跳过 bot/自动提交身份，按 agent-discovery 的映射表转换为 `open_id`。
-4. 未命中时回落到被审查项目的 Owner，并在报告附录写 `指定人=项目 Owner 回落`。
+**推断顺序（必须按序执行，写完附录才能写入 Base）：**
 
-报告附录为每条写入记录保留依据：`指定人：<file|commit> → <Git 身份> → <姓名>（commit/file/directory/owner）`。
+1. **引入 commit / PR 作者（最高优先）**
+   - 根因已归因到 commit 短哈希 → `git show -s --format='%an <%ae>' <sha>` 取**该提交本身**的作者（squash/merge 进 main 的提交作者即人类作者，如 `08f59a76` → `Zezhong Zhang`）。
+   - 根因/标题/正文提到 `(#N)` 或 PR 链接 → `gh pr view N --json author,mergedBy`，优先 `author.login`，否则 `mergedBy`。
+   - 若该 commit 的作者是 bot（见下），但对应 PR 作者是人类 → **用 PR 作者**，不要跳过到 Owner。
+   - squash 内部的 `ace-auto-fix` / Co-Authored-By 机器人提交**不算**人类作者；以外层 merge/squash 提交或 PR author 为准。
+2. **文件近期作者**：无引入 commit/PR 时，查根因文件最近 3 次非 merge commit 中第一个可映射人类作者；文件无历史时查所在目录。`ace-superpowers/` 下文件在该子仓库内执行 Git 查询。
+3. **映射**：跳过 bot/自动提交身份（`*[bot]*`、`noreply@anthropic.com`、`auto-fix@*`、`ace-auto-fix` 等，完整列表见 agent-discovery），按映射表把 email / login / name 转为 `open_id`。
+4. **Owner 回落（最后手段）**：仅当 1–3 **全部**得不到可映射人类作者时，才回落到被审查项目的 Owner，并在报告附录写 `指定人=项目 Owner 回落（原因：<无引入 commit|作者均为 bot|映射未命中>）`。
+
+**硬约束：**
+
+- 卡片/报告里已经写出引入 commit 或 PR 号时，指定人必须来自该 commit/PR 作者（或映射后的同一人）；**不得**因「项目默认 owner」覆盖。
+- 写入前自检：附录行必须能从 Git/`gh` 命令复现；复现结果与拟写指定人不一致则重跑推断，禁止硬填 Owner。
+- 人员字段格式：`[{"id":"<open_id>"}]`；open_id 只允许来自 agent-discovery 映射表或 Owner 路由表。
+
+报告附录为每条写入记录保留依据：`指定人：<sha|#N|file> → <Git 身份> → <姓名>（commit|pr|file|directory|owner）`。
 
 ### 每日去重协议（定时执行必须遵守）
 
@@ -279,23 +291,37 @@ lark-cli base +record-batch-create --as user --base-token <base> --table-id <tab
 5. **反向核销**：存量未关闭、但今日实测未复现的问题 → **不改记录**（人工确认修复才关闭），卡片单列"疑似已修复待确认 K 条"。判「未复现」必须依据带 `--fresh`（重打基座）的那一轮 e2e——复用旧镜像的绿色不构成修复证据，见 Phase 1.1 起手式。
 6. **卡片只报增量**：`新增 M / 仍存在 N / 回归 R / 疑似修复 K`，附链路通过数与测试基线和上一轮的对比。
 
-buglist 字段映射约定：`问题描述`（[P0-x.y] 前缀 + 一句话）、`失败原因`（根因 + 验收标准）、`复现路径`（精确命令）、`变更文件`（file:line + 修法）、`类型`（缺陷/优化/文档）、`重要程度(P0优先)`、`修复难度(L1 最难)`、`修复状态`=待修复、`环境`、`上报人`=[{"id":"ou_aa1da0fb8d5b42eb69389ba4eca58303"}]、`指定人`=[{"id":"<open_id>"}]（由 5.0 推断；人员字段必须为对象数组，禁止写姓名字符串）。
+buglist 字段映射约定：`问题描述`（[P0-x.y] 前缀 + 一句话）、`失败原因`（根因 + 验收标准）、`复现路径`（精确命令）、`变更文件`（file:line + 修法）、`类型`（缺陷/优化/文档）、`重要程度(P0优先)`、`修复难度(L1 最难)`、`修复状态`=待修复、`环境`、`上报人`=[{"id":"ou_ae88f54c022ffb13e2029f286bccba09"}]（刘鹏；open_id 以 agent-discovery 最新缓存为准）、`指定人`=[{"id":"<open_id>"}]（由 5.0 推断；人员字段必须为对象数组，禁止写姓名字符串）。
 
 ## Phase 6 — 群通知（卡片）
 
 ```bash
-lark-cli im +messages-send --as user --chat-id <chat_id> --msg-type interactive --content "$(cat card.json)"
+# 外部群必须 --as bot（见参数表 chat_id 说明）
+lark-cli im +messages-send --as bot --chat-id <chat_id> --msg-type interactive --content "$(cat card.json)"
 ```
 
 卡片结构：红色 header（🧪 标题+日期）→ markdown 根因摘要（emoji 分级 🔴🟠🟡）→ hr → 修复计划一句话 → action 按钮（📄 完整报告 / 📋 buglist 表）→ note（环境信息）。
 
-**@ 项目 owner（Agent Discovery 路由）**：卡片摘要首行必须 @ 被审查项目的 owner，owner 从同仓库 `skills/agent-discovery/SKILL.md` 的路由表查（ace → hyper-instrument bot、hyper-data → 杜卓然、hyper-fib → 苗宏图，含 open_id）。卡片 lark_md 里用 `<at id=ou_xxx></at>`；项目未登记时按 agent-discovery 的未登记协议处理（@ 兜底联系人问 owner，拿到后写回路由表并 push），不要猜。
+**@ 项目 owner（汇总行）**：卡片摘要首行仍 @ 被审查项目的 owner（路由表：ace → 刘鹏、hyper-data → 杜卓然、hyper-fib → 苗宏图、ace-benchmark → 杨天宇，含 open_id）。卡片 lark_md 用 `<at id=ou_xxx></at>`；项目未登记时按 agent-discovery 未登记协议处理，不要猜。
+
+**每条问题必须带指定人并 @（硬约束）**：新增 / 回归的每一行摘要**必须**复用 Phase 5.0 已确定的指定人（与 buglist「指定人」同一 `open_id`），不得只写「由 owner 修复」、不得省略 `<at>`、不得用项目 owner 顶替已知文件/commit 维护者。
+
+行格式（lark_md）：
+
+```text
+- 🔴 [ACE-hook-parity-drift] 一句话摘要（08f59a76）— 指定人 <at id=ou_xxx></at>
+```
+
+- 同一人出现在多行时，**每行仍写完整 `<at id=…></at>`**（便于按行跳转通知）。
+- 修复计划不得写笼统的「P1 由 owner 修复」；改为「P1：`<at id=…></at>` 跟进 web-chat / `<at id=…></at>` 跟进 trace-evolve」。
+- Owner 回落的条目在行末加 `（Owner 回落）`，与报告附录一致。
+- 发完后用 `im +chat-messages-list` 读回，确认 `mentions` 含每条指定人的 open_id；缺 mention = 发送失败，须重发。
 
 每日执行时卡片正文只写**增量与归因**，不重复旧问题详情：
 
 - 对比行：`链路 y/8（上次 x/8）｜新增 M ｜回归 R ｜疑似修复 K ｜仍存在 N`
 - commit 行：`本窗口 c 个 commit：新功能 f（实测通过 g）｜修复 h（复测通过 i）`
-- 新增/回归的问题各一行摘要，带引入 commit 短哈希；无变化时明确写"与昨日持平"。
+- 新增/回归的问题各一行摘要：指纹 + 一句话 + 引入 commit 短哈希 + **指定人 `<at>`**；无变化时明确写"与昨日持平"。
 
 ## 代码级增量审查与自动修复（每日 repo 扫描模式）
 
