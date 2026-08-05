@@ -219,6 +219,13 @@ lark-cli update
 
 `system-quality-review` 的「指定人」由 `agent-discovery` 的 Git 身份映射得出；映射未命中才回落项目 Owner，并在报告附录说明。不得猜测 open_id，也不得覆盖已有 bug 记录的人工指定人。
 
+### 反例：有引入 PR/commit 仍写成项目 Owner
+
+- **现象**：卡片写了 `08f59a76` / `#342`（trace & evolve 大修），buglist「指定人」却是 ace Owner 刘鹏。
+- **事实**：`git show -s --format='%an <%ae>' 08f59a76` → `Zezhong Zhang <jack.zezhong.zhang@gmail.com>`；`gh pr view 342 --json author` → `zezhong-zhang`；映射表 → 张泽中。
+- **原因**：执行时跳过了 commit/PR 作者步骤，或把 squash 内部的 `ace-auto-fix` 当成「无人类作者」直接 Owner 回落。
+- **正确姿势**：外层 squash/merge 提交作者或 PR author 优先；仅 1–3 步全失败才 Owner 回落，且附录必须写原因。Phase 6 每行问题必须 `@` 该指定人，禁止写「由 owner 修复」。
+
 ---
 
 ## 12. lark-cli 1.0.68+ 文档/表格/消息 API 已切到 v2
