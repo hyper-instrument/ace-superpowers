@@ -8,7 +8,8 @@ import { useIsMobile } from './hooks/useIsMobile'
 import { locations } from './data/locations'
 import { events } from './data/events'
 import { eventIntensity, posToYear, yearToPos } from './data/timeScale'
-import type { EventCategory, RiverEvent } from './data/types'
+import { UI, useLang, type Lang } from './i18n'
+import type { EventCategory, L10n, RiverEvent } from './data/types'
 
 export type ViewMode = 'explore' | 'timeline'
 
@@ -18,6 +19,19 @@ export const CATEGORY_COLORS: Record<EventCategory, string> = {
   文明史: 'var(--cat-civ)',
   战争史: 'var(--cat-war)',
 }
+
+export const CATEGORY_LABELS: Record<EventCategory, L10n> = {
+  治水史: UI.catWater,
+  工程史: UI.catEng,
+  文明史: UI.catCiv,
+  战争史: UI.catWar,
+}
+
+const LANGS: Array<{ code: Lang; label: string }> = [
+  { code: 'zh', label: '中' },
+  { code: 'en', label: 'EN' },
+  { code: 'ja', label: '日' },
+]
 
 export interface ActiveEvent {
   event: RiverEvent
@@ -31,6 +45,7 @@ export default function App() {
   const [playing, setPlaying] = useState(false)
   const rafRef = useRef(0)
   const isMobile = useIsMobile()
+  const { lang, setLang, t } = useLang()
 
   const selected = useMemo(
     () => locations.find((l) => l.id === selectedId) ?? null,
@@ -84,10 +99,10 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <h1>万里长江</h1>
-          <span>从雪山到海洋 · 一条江，半部中国史</span>
+          <h1>{t(UI.brandTitle)}</h1>
+          <span>{t(UI.brandSub)}</span>
         </div>
-        <nav className="switcher" aria-label="视图切换">
+        <nav className="switcher" aria-label="view switcher">
           <button
             className={mode === 'explore' ? 'active' : ''}
             onClick={() => {
@@ -95,10 +110,10 @@ export default function App() {
               setPlaying(false)
             }}
           >
-            脑图视图
+            {t(UI.viewMap)}
           </button>
           <button className={mode === 'timeline' ? 'active' : ''} onClick={() => setMode('timeline')}>
-            时间轴视图
+            {t(UI.viewTimeline)}
           </button>
         </nav>
         {mode === 'timeline' ? (
@@ -106,7 +121,7 @@ export default function App() {
             {(Object.keys(CATEGORY_COLORS) as EventCategory[]).map((c) => (
               <span key={c}>
                 <i style={{ background: CATEGORY_COLORS[c] }} />
-                {c}
+                {t(CATEGORY_LABELS[c])}
               </span>
             ))}
           </div>
@@ -114,18 +129,25 @@ export default function App() {
           <div className="legend">
             <span>
               <i style={{ background: 'var(--nature)' }} />
-              自然
+              {t(UI.nature)}
             </span>
             <span>
               <i style={{ background: 'var(--history)' }} />
-              历史
+              {t(UI.history)}
             </span>
             <span>
               <i style={{ background: 'var(--culture)' }} />
-              人文
+              {t(UI.culture)}
             </span>
           </div>
         )}
+        <nav className="lang-switch" aria-label="language">
+          {LANGS.map(({ code, label }) => (
+            <button key={code} className={lang === code ? 'active' : ''} onClick={() => setLang(code)}>
+              {label}
+            </button>
+          ))}
+        </nav>
       </header>
 
       <main className="canvas-wrap">
@@ -138,11 +160,7 @@ export default function App() {
         ) : (
           <>
             <RiverMap mode={mode} selectedId={selectedId} onSelect={setSelectedId} activeEvents={activeEvents} />
-            <div className="hint">
-              {mode === 'explore'
-                ? '点击沿江节点，查看该地的自然 · 历史 · 人文 ｜ 滚轮缩放，拖拽平移'
-                : '拖动下方时间轴穿越五千年，事件将在江上亮起'}
-            </div>
+            <div className="hint">{mode === 'explore' ? t(UI.hintExplore) : t(UI.hintTimeline)}</div>
           </>
         )}
       </main>

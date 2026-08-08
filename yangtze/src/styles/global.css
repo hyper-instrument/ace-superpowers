@@ -648,6 +648,10 @@ body {
     font-size: 20px;
   }
 
+  .brand span {
+    white-space: normal;
+  }
+
   .legend {
     display: none;
   }
@@ -918,4 +922,38 @@ body {
   padding: 5px 12px;
   border-radius: 999px;
   cursor: pointer;
+}
+
+/* ---------- 语言切换 ---------- */
+.lang-switch {
+  display: flex;
+  background: rgba(255, 252, 244, 0.8);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 3px;
+  box-shadow: 0 2px 10px rgba(90, 70, 40, 0.08);
+}
+
+.lang-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  font-family: inherit;
+  min-width: 38px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lang-switch button.active {
+  background: #c56a45;
+  color: #fdfaf2;
+}
+
+@media (max-width: 760px) {
+  .lang-switch {
+    order: 3;
+  }
 }

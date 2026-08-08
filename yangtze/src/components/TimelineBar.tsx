@@ -1,8 +1,9 @@
 import { useCallback, useRef, type PointerEvent } from 'react'
 import { events } from '../data/events'
-import { eras, eraOf, formatYear } from '../data/eras'
+import { eras, eraOf } from '../data/eras'
 import { posToYear, yearToPos } from '../data/timeScale'
 import { CATEGORY_COLORS, type ActiveEvent } from '../App'
+import { UI, useLang, formatYear, formatYearShort } from '../i18n'
 
 const ERA_TINTS = [
   'rgba(181, 138, 86, 0.2)',
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function TimelineBar({ year, onYearChange, playing, onTogglePlay, activeEvents }: Props) {
+  const { lang, t } = useLang()
   const trackRef = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
 
@@ -47,12 +49,12 @@ export function TimelineBar({ year, onYearChange, playing, onTogglePlay, activeE
   const era = eraOf(year)
 
   return (
-    <section className="timeline" aria-label="历史时间轴">
+    <section className="timeline" aria-label="timeline">
       <div className="tl-readout">
-        <span className="year">{formatYear(year)}</span>
-        {era && <span className="era">{era.name}</span>}
+        <span className="year">{formatYear(year, lang)}</span>
+        {era && <span className="era">{t(era.name)}</span>}
         <button className="play" onClick={onTogglePlay}>
-          {playing ? '⏸ 暂停' : '▶ 沿时间航行'}
+          {playing ? t(UI.pause) : t(UI.play)}
         </button>
       </div>
       <div
@@ -68,11 +70,11 @@ export function TimelineBar({ year, onYearChange, playing, onTogglePlay, activeE
             const width = (yearToPos(e.end) - yearToPos(e.start)) * 100
             return (
               <div
-                key={e.name}
+                key={e.name.zh}
                 className="tl-era"
                 style={{ left: `${left}%`, width: `${width}%`, background: ERA_TINTS[i % ERA_TINTS.length] }}
               >
-                {width > 5.5 ? e.name : ''}
+                {width > 5.5 ? t(e.name) : ''}
               </div>
             )
           })}
@@ -82,7 +84,7 @@ export function TimelineBar({ year, onYearChange, playing, onTogglePlay, activeE
             key={e.id}
             className={`tl-tick${activeIds.has(e.id) ? ' active' : ''}`}
             style={{ left: `${yearToPos(e.year) * 100}%`, background: CATEGORY_COLORS[e.category], color: CATEGORY_COLORS[e.category] }}
-            title={`${formatYear(e.year)} · ${e.title}`}
+            title={`${formatYear(e.year, lang)} · ${t(e.title)}`}
             onClick={(ev) => {
               ev.stopPropagation()
               onYearChange(e.year)
@@ -91,7 +93,7 @@ export function TimelineBar({ year, onYearChange, playing, onTogglePlay, activeE
         ))}
         {AXIS_YEARS.map((y) => (
           <span key={y} className="tl-axis-year" style={{ left: `${yearToPos(y) * 100}%` }}>
-            {y < 0 ? `前${-y}` : y}
+            {formatYearShort(y, lang)}
           </span>
         ))}
         <div className="tl-cursor" style={{ left: `${yearToPos(year) * 100}%` }} />

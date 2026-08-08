@@ -1,26 +1,27 @@
 import { locations } from '../data/locations'
-import type { FacetKey, RiverLocation } from '../data/types'
+import { UI, useLang } from '../i18n'
+import type { FacetKey, L10n, RiverLocation } from '../data/types'
 
-const FACET_CHIPS: Array<{ key: FacetKey; label: string; cls: string }> = [
-  { key: 'nature', label: '自然', cls: 'c-nature' },
-  { key: 'history', label: '历史', cls: 'c-history' },
-  { key: 'culture', label: '人文', cls: 'c-culture' },
+const FACET_CHIPS: Array<{ key: FacetKey; label: L10n; cls: string }> = [
+  { key: 'nature', label: UI.nature, cls: 'c-nature' },
+  { key: 'history', label: UI.history, cls: 'c-history' },
+  { key: 'culture', label: UI.culture, cls: 'c-culture' },
 ]
 
-const REACHES: Array<{ title: string; sub: string; ids: string[] }> = [
+const REACHES: Array<{ title: L10n; sub: L10n; ids: string[] }> = [
   {
-    title: '上游',
-    sub: '雪山 · 峡谷 · 山城',
+    title: UI.reachUp,
+    sub: UI.reachUpSub,
     ids: ['tuotuohe', 'tongtianhe', 'jinshajiang', 'hutiaoxia', 'panxi', 'sanxingdui', 'dujiangyan', 'baihetan', 'chongqing', 'sanxia'],
   },
   {
-    title: '中游',
-    sub: '江湖之间',
+    title: UI.reachMid,
+    sub: UI.reachMidSub,
     ids: ['yichang-jingzhou', 'dongting', 'wuhan', 'poyang'],
   },
   {
-    title: '下游',
-    sub: '奔向大海',
+    title: UI.reachLow,
+    sub: UI.reachLowSub,
     ids: ['nanjing', 'guazhou', 'jiangnan', 'shanghai'],
   },
 ]
@@ -32,22 +33,23 @@ interface Props {
 }
 
 export function MobileJourney({ onSelect }: Props) {
+  const { t } = useLang()
   return (
     <div className="journey">
       <div className="journey-hero">
-        <h2 className="serif">从雪山到海洋</h2>
-        <p>沿着 6300 公里的大江顺流而下，点开每一站，看它的自然、历史与人文。</p>
+        <h2 className="serif">{t(UI.heroTitle)}</h2>
+        <p>{t(UI.heroText)}</p>
         <div className="journey-meta">
-          <span>6300+ 公里</span>
-          <span>穿越 11 省市</span>
-          <span>上下五千年</span>
+          <span>{t(UI.metaKm)}</span>
+          <span>{t(UI.metaProvinces)}</span>
+          <span>{t(UI.meta5000)}</span>
         </div>
       </div>
       {REACHES.map((reach) => (
-        <section key={reach.title} className="reach">
+        <section key={reach.title.zh} className="reach">
           <h3 className="reach-title serif">
-            {reach.title}
-            <span>{reach.sub}</span>
+            {t(reach.title)}
+            <span>{t(reach.sub)}</span>
           </h3>
           <ul className="reach-list">
             {reach.ids.map((id) => {
@@ -55,12 +57,12 @@ export function MobileJourney({ onSelect }: Props) {
               return (
                 <li key={id}>
                   <button className="stop-card" onClick={() => onSelect(id)}>
-                    <span className="stop-name">{loc.name}</span>
-                    <span className="stop-sub">{loc.subtitle}</span>
+                    <span className="stop-name">{t(loc.name)}</span>
+                    <span className="stop-sub">{t(loc.subtitle)}</span>
                     <span className="stop-chips">
                       {FACET_CHIPS.filter((c) => loc.facets[c.key]).map((c) => (
                         <i key={c.key} className={c.cls}>
-                          {c.label}
+                          {t(c.label)}
                         </i>
                       ))}
                     </span>
@@ -71,7 +73,7 @@ export function MobileJourney({ onSelect }: Props) {
           </ul>
         </section>
       ))}
-      <div className="journey-end serif">—— 入 海 ——</div>
+      <div className="journey-end serif">{t(UI.toSea)}</div>
     </div>
   )
 }

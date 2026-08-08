@@ -19,7 +19,8 @@ import {
   STEM_LOWER_IDX,
   type LonLat,
 } from '../data/geo'
-import { CATEGORY_COLORS, type ActiveEvent, type ViewMode } from '../App'
+import { CATEGORY_COLORS, CATEGORY_LABELS, type ActiveEvent, type ViewMode } from '../App'
+import { UI, useLang, formatYearShort } from '../i18n'
 
 // ---- 静态地理计算（模块级，只算一次） ----
 
@@ -71,6 +72,7 @@ interface Props {
 }
 
 export function RiverMap({ mode, selectedId, onSelect, activeEvents }: Props) {
+  const { lang, t } = useLang()
   const svgRef = useRef<SVGSVGElement>(null)
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity)
 
@@ -181,10 +183,10 @@ export function RiverMap({ mode, selectedId, onSelect, activeEvents }: Props) {
 
         {/* 地理注记 */}
         <text x={project([91.5, 35.6])[0]} y={project([91.5, 35.6])[1]} fontSize={14} fill="var(--map-note)" letterSpacing={4}>
-          青 藏 高 原
+          {t(UI.tibetPlateau)}
         </text>
         <text x={project([121.6, 28.2])[0]} y={project([121.6, 28.2])[1]} fontSize={14} fill="var(--map-note)" letterSpacing={4}>
-          东 海
+          {t(UI.eastSea)}
         </text>
 
         {/* 地点节点 */}
@@ -221,7 +223,7 @@ export function RiverMap({ mode, selectedId, onSelect, activeEvents }: Props) {
                 strokeWidth={2.4}
               />
               <text x={p[0] + (loc.labelDx ?? 0)} y={labelY} textAnchor="middle">
-                {loc.name}
+                {t(loc.name)}
               </text>
             </g>
           )
@@ -250,10 +252,10 @@ export function RiverMap({ mode, selectedId, onSelect, activeEvents }: Props) {
                         className="event-card"
                         style={{ borderLeftColor: CATEGORY_COLORS[event.category], opacity: 0.35 + 0.65 * intensity }}
                       >
-                        <b>{event.title}</b>
+                        <b>{t(event.title)}</b>
                         <span className="meta">
-                          {event.year < 0 ? `公元前 ${-event.year}` : event.year}
-                          {event.endYear ? ` – ${event.endYear < 0 ? `前 ${-event.endYear}` : event.endYear}` : ''} · {event.category}
+                          {formatYearShort(event.year, lang)}
+                          {event.endYear ? ` – ${formatYearShort(event.endYear, lang)}` : ''} · {t(CATEGORY_LABELS[event.category])}
                         </span>
                       </div>
                     ))}

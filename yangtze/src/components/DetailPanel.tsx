@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { events } from '../data/events'
-import { formatYear } from '../data/eras'
-import type { FacetKey, RiverEvent, RiverLocation } from '../data/types'
+import { UI, useLang, formatYear } from '../i18n'
+import type { FacetKey, L10n, RiverEvent, RiverLocation } from '../data/types'
 
-const FACET_META: Record<FacetKey, { label: string; color: string; cls: string }> = {
-  nature: { label: '自然', color: 'var(--nature)', cls: 't-nature' },
-  history: { label: '历史', color: 'var(--history)', cls: 't-history' },
-  culture: { label: '人文', color: 'var(--culture)', cls: 't-culture' },
+const FACET_META: Record<FacetKey, { label: L10n; color: string; cls: string }> = {
+  nature: { label: UI.nature, color: 'var(--nature)', cls: 't-nature' },
+  history: { label: UI.history, color: 'var(--history)', cls: 't-history' },
+  culture: { label: UI.culture, color: 'var(--culture)', cls: 't-culture' },
 }
 
 const FACET_ORDER: FacetKey[] = ['nature', 'history', 'culture']
@@ -18,6 +18,7 @@ interface Props {
 }
 
 export function DetailPanel({ location, onClose, onJumpToEvent }: Props) {
+  const { lang, t } = useLang()
   const facetKeys = useMemo(
     () => (location ? FACET_ORDER.filter((k) => location.facets[k]) : []),
     [location],
@@ -44,11 +45,11 @@ export function DetailPanel({ location, onClose, onJumpToEvent }: Props) {
         {location && (
           <>
             <div className="drawer-head">
-              <button className="close" onClick={onClose} aria-label="关闭">
+              <button className="close" onClick={onClose} aria-label={t(UI.close)}>
                 ✕
               </button>
-              <h2>{location.name}</h2>
-              <p>{location.subtitle}</p>
+              <h2>{t(location.name)}</h2>
+              <p>{t(location.subtitle)}</p>
             </div>
             <div className="tabs">
               {facetKeys.map((k) => (
@@ -57,34 +58,34 @@ export function DetailPanel({ location, onClose, onJumpToEvent }: Props) {
                   className={`${FACET_META[k].cls}${tab === k ? ' active' : ''}`}
                   onClick={() => setTab(k)}
                 >
-                  {FACET_META[k].label}
+                  {t(FACET_META[k].label)}
                 </button>
               ))}
             </div>
             <div className="drawer-body" style={{ '--facet-color': meta.color } as CSSProperties}>
               {facet && (
                 <>
-                  <div className="facet-title">看 点</div>
+                  <div className="facet-title">{t(UI.highlights)}</div>
                   <ul className="facet-list">
                     {facet.highlights.map((h, i) => (
-                      <li key={i}>{h}</li>
+                      <li key={i}>{t(h)}</li>
                     ))}
                   </ul>
                   {facet.meaning && (
                     <div className="meaning">
-                      <em>意 义</em>
-                      {facet.meaning}
+                      <em>{t(UI.meaning)}</em>
+                      {t(facet.meaning)}
                     </div>
                   )}
                 </>
               )}
               {relatedEvents.length > 0 && (
                 <div className="loc-events">
-                  <h3>这里的时间轴事件</h3>
+                  <h3>{t(UI.eventsHere)}</h3>
                   {relatedEvents.map((e) => (
-                    <button key={e.id} onClick={() => onJumpToEvent(e)} title="在时间轴上查看">
-                      <span className="yr">{formatYear(e.year)}</span>
-                      <span>{e.title} →</span>
+                    <button key={e.id} onClick={() => onJumpToEvent(e)}>
+                      <span className="yr">{formatYear(e.year, lang)}</span>
+                      <span>{t(e.title)} →</span>
                     </button>
                   ))}
                 </div>

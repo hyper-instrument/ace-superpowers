@@ -1,17 +1,24 @@
 export type FacetKey = 'nature' | 'history' | 'culture'
 
+/** 三语文案 */
+export interface L10n {
+  zh: string
+  en: string
+  ja: string
+}
+
 export interface Facet {
   /** 看点：这一维度下值得看/值得讲的内容 */
-  highlights: string[]
+  highlights: L10n[]
   /** 意义：为什么重要 */
-  meaning?: string
+  meaning?: L10n
 }
 
 export interface RiverLocation {
   id: string
-  name: string
+  name: L10n
   /** 一句话定位 */
-  subtitle: string
+  subtitle: L10n
   /** 真实经纬度 */
   lon: number
   lat: number
@@ -32,14 +39,14 @@ export interface RiverEvent {
   year: number
   /** 时代跨度事件的结束年（可选） */
   endYear?: number
-  title: string
+  title: L10n
   locationId: string
   category: EventCategory
-  description: string
+  description: L10n
 }
 
 export interface Era {
-  name: string
+  name: L10n
   start: number
   end: number
 }
