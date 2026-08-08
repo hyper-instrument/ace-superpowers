@@ -36,35 +36,31 @@ npm run preview  # 预览构建产物
 
 ## 部署（不影响机器上其他服务）
 
-网站是纯静态文件，构建产物在 `yangtze/dist/`（`base: './'`，任意子路径可用）。两种互不干扰的方式任选：
+仓库自带**构建成品** `yangtze/release/`，部署机上只需要 git + nginx（不需要 node）。脚本与 nginx 配置片段在 `yangtze/deploy/`：
 
-**方式 A：挂到现有 nginx 的一个子路径**（只新增一个 location，不动其他站点配置）
-
-```nginx
-# 放进现有 server {} 内即可
-location /yangtze/ {
-    alias /srv/yangtze/;            # dist 内容复制到这里
-    try_files $uri $uri/ /yangtze/index.html;
-}
-```
+**在部署机（如 xiang）上，首次部署三步：**
 
 ```bash
-rsync -a yangtze/dist/ /srv/yangtze/
-nginx -t && systemctl reload nginx   # reload 不中断其他服务
+git clone -b claude/yangtze-river-mindmap-site-m4w2yu \
+    https://github.com/hyper-instrument/ace-superpowers.git ~/yangtze-site
+sudo ~/yangtze-site/yangtze/deploy/deploy-on-server.sh        # 发布到 /srv/yangtze
+# 按 ~/yangtze-site/yangtze/deploy/yangtze.nginx.conf 里的说明二选一配置 nginx，然后:
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-**方式 B：独立端口的静态服务**（完全隔离，占一个未用端口）
+**之后每次更新只需：**
 
 ```bash
-rsync -a yangtze/dist/ /srv/yangtze/
-# systemd 单元 /etc/systemd/system/yangtze.service：
-# [Service]
-# ExecStart=/usr/bin/python3 -m http.server 8391 --directory /srv/yangtze
-# Restart=always
-# [Install]
-# WantedBy=multi-user.target
-systemctl enable --now yangtze
+git -C ~/yangtze-site pull && sudo ~/yangtze-site/yangtze/deploy/deploy-on-server.sh
 ```
+
+**或者从你自己的电脑一条命令推过去**（需要能 ssh 到部署机）：
+
+```bash
+yangtze/deploy/deploy-from-local.sh user@xiang
+```
+
+nginx 两种接入方式（见 `deploy/yangtze.nginx.conf`）：子路径 `location /yangtze/`（挂在现有站点下）或独立端口 8391 的 server 块，均只增不改，`reload` 不中断现有服务。桌面端与手机端是同一个响应式站点，部署一次即可。
 
 ## 数据来源
 
