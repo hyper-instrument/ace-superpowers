@@ -12,15 +12,15 @@ export interface RiverLocation {
   name: string
   /** 一句话定位 */
   subtitle: string
-  /** 画布坐标（viewBox 1600x1000） */
-  x: number
-  y: number
+  /** 真实经纬度 */
+  lon: number
+  lat: number
   /** 标签相对节点的方位 */
   labelSide: 'top' | 'bottom'
-  /** 标签水平偏移，用于避开河道 */
+  /** 标签水平偏移（屏幕像素），用于避开河道 */
   labelDx?: number
-  /** 不在干流上的节点（如三星堆、都江堰、良渚），画一条细连接线到干流锚点 */
-  anchor?: { x: number; y: number }
+  /** 不在干流上的节点（如三星堆、都江堰），画一条细连接线到水系锚点 */
+  anchor?: { lon: number; lat: number }
   facets: Partial<Record<FacetKey, Facet>>
 }
 

@@ -5,11 +5,11 @@ import { posToYear, yearToPos } from '../data/timeScale'
 import { CATEGORY_COLORS, type ActiveEvent } from '../App'
 
 const ERA_TINTS = [
-  'rgba(148,163,184,0.16)',
-  'rgba(56,189,248,0.14)',
-  'rgba(167,139,250,0.14)',
-  'rgba(251,191,36,0.12)',
-  'rgba(52,211,153,0.13)',
+  'rgba(181, 138, 86, 0.2)',
+  'rgba(63, 127, 174, 0.16)',
+  'rgba(125, 107, 158, 0.16)',
+  'rgba(185, 138, 46, 0.18)',
+  'rgba(74, 124, 89, 0.17)',
 ]
 
 const AXIS_YEARS = [-3000, -2000, -1000, 0, 500, 1000, 1500, 1800, 1900, 2000]

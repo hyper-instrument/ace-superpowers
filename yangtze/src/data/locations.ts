@@ -1,43 +1,12 @@
 import type { RiverLocation } from './types'
 
-/**
- * 长江干流路标点（自西向东），viewBox 1600x1000。
- * 走向大致还原真实地理：青藏高原东南下 → 云南石鼓大拐弯北上 →
- * 川渝东行 → 三峡出山 → 两湖平原起伏 → 下游东北上再东行入海。
- */
-export const riverWaypoints: Array<[number, number]> = [
-  [90, 200], // 各拉丹冬·沱沱河
-  [150, 250], // 通天河上段
-  [210, 320], // 通天河下段（玉树）
-  [255, 420], // 金沙江峡谷
-  [290, 545], // 迪庆段
-  [320, 640], // 石鼓大拐弯（虎跳峡）
-  [385, 700], // 攀西干热河谷
-  [470, 720], // 凉山段
-  [545, 660], // 白鹤滩·溪洛渡
-  [590, 590], // 宜宾（金沙江成长江）
-  [660, 560], // 泸州
-  [740, 520], // 重庆
-  [820, 490], // 白帝城·瞿塘峡
-  [880, 500], // 三峡·西陵峡
-  [935, 525], // 宜昌·荆州
-  [990, 575], // 城陵矶·洞庭湖口
-  [1065, 510], // 武汉
-  [1150, 555], // 九江·湖口
-  [1230, 500], // 安庆
-  [1300, 435], // 南京
-  [1355, 415], // 扬州·瓜洲
-  [1430, 445], // 江南水网
-  [1530, 430], // 上海·长江口
-]
-
 export const locations: RiverLocation[] = [
   {
     id: 'tuotuohe',
     name: '沱沱河 · 玉树',
     subtitle: '长江源头，高寒湿地与生命的摇篮',
-    x: 90,
-    y: 200,
+    lon: 91.0,
+    lat: 33.45,
     labelSide: 'top',
     facets: {
       nature: {
@@ -60,10 +29,9 @@ export const locations: RiverLocation[] = [
     id: 'tongtianhe',
     name: '通天河',
     subtitle: '高原宽谷，河流自由生长的地方',
-    x: 210,
-    y: 320,
+    lon: 97.2,
+    lat: 33.0,
     labelSide: 'top',
-    labelDx: 58,
     facets: {
       nature: {
         highlights: ['高原宽谷，辫状水道，河流自由散漫地生长'],
@@ -82,10 +50,10 @@ export const locations: RiverLocation[] = [
     id: 'jinshajiang',
     name: '金沙江 · 迪庆',
     subtitle: '横断山脉的血管',
-    x: 290,
-    y: 545,
+    lon: 99.1,
+    lat: 28.4,
     labelSide: 'top',
-    labelDx: 74,
+    labelDx: 62,
     facets: {
       nature: {
         highlights: [
@@ -107,10 +75,10 @@ export const locations: RiverLocation[] = [
     id: 'hutiaoxia',
     name: '虎跳峡 · 丽江',
     subtitle: '世界最深峡谷之一，石鼓大拐弯',
-    x: 320,
-    y: 640,
+    lon: 100.13,
+    lat: 27.17,
     labelSide: 'bottom',
-    labelDx: -50,
+    labelDx: -60,
     facets: {
       nature: {
         highlights: [
@@ -132,8 +100,8 @@ export const locations: RiverLocation[] = [
     id: 'panxi',
     name: '攀西河谷 · 凉山',
     subtitle: '干热河谷里的另一个世界',
-    x: 430,
-    y: 712,
+    lon: 101.7,
+    lat: 26.6,
     labelSide: 'bottom',
     facets: {
       nature: {
@@ -156,10 +124,11 @@ export const locations: RiverLocation[] = [
     id: 'sanxingdui',
     name: '三星堆 · 金沙',
     subtitle: '长江上游的古蜀之光',
-    x: 610,
-    y: 430,
+    lon: 104.2,
+    lat: 31.0,
     labelSide: 'top',
-    anchor: { x: 590, y: 590 },
+    labelDx: 62,
+    anchor: { lon: 103.8, lat: 30.2 },
     facets: {
       history: {
         highlights: [
@@ -174,10 +143,10 @@ export const locations: RiverLocation[] = [
     id: 'dujiangyan',
     name: '都江堰',
     subtitle: '两千多年的治水智慧',
-    x: 685,
-    y: 415,
+    lon: 103.62,
+    lat: 31.0,
     labelSide: 'top',
-    anchor: { x: 660, y: 560 },
+    labelDx: -45,
     facets: {
       history: {
         highlights: [
@@ -192,10 +161,10 @@ export const locations: RiverLocation[] = [
     id: 'baihetan',
     name: '白鹤滩 · 溪洛渡',
     subtitle: '超级峡谷中的超级工程',
-    x: 545,
-    y: 660,
+    lon: 102.95,
+    lat: 27.35,
     labelSide: 'bottom',
-    labelDx: 46,
+    labelDx: 55,
     facets: {
       nature: {
         highlights: [
@@ -213,8 +182,8 @@ export const locations: RiverLocation[] = [
     id: 'chongqing',
     name: '重庆',
     subtitle: '最有生活感的长江山城',
-    x: 740,
-    y: 520,
+    lon: 106.6,
+    lat: 29.6,
     labelSide: 'top',
     facets: {
       nature: {
@@ -233,8 +202,8 @@ export const locations: RiverLocation[] = [
     id: 'sanxia',
     name: '三峡 · 白帝城',
     subtitle: '夔门天下雄，轻舟已过万重山',
-    x: 850,
-    y: 488,
+    lon: 109.9,
+    lat: 31.02,
     labelSide: 'top',
     facets: {
       nature: {
@@ -257,10 +226,10 @@ export const locations: RiverLocation[] = [
     id: 'yichang-jingzhou',
     name: '宜昌 · 荆州',
     subtitle: '楚文化故都，出峡入平原',
-    x: 935,
-    y: 525,
+    lon: 111.3,
+    lat: 30.7,
     labelSide: 'bottom',
-    labelDx: -34,
+    labelDx: -40,
     facets: {
       history: {
         highlights: [
@@ -282,9 +251,10 @@ export const locations: RiverLocation[] = [
     id: 'dongting',
     name: '洞庭湖 · 赤壁',
     subtitle: '江湖相接，水势转换',
-    x: 990,
-    y: 575,
+    lon: 113.1,
+    lat: 29.45,
     labelSide: 'bottom',
+    labelDx: 46,
     facets: {
       nature: {
         highlights: [
@@ -306,8 +276,8 @@ export const locations: RiverLocation[] = [
     id: 'wuhan',
     name: '武汉',
     subtitle: '江湖城市，工业之城的浮现',
-    x: 1065,
-    y: 510,
+    lon: 114.3,
+    lat: 30.6,
     labelSide: 'top',
     facets: {
       nature: {
@@ -333,9 +303,10 @@ export const locations: RiverLocation[] = [
     id: 'poyang',
     name: '九江 · 鄱阳湖',
     subtitle: '石钟山下，南北通江',
-    x: 1150,
-    y: 555,
+    lon: 116.25,
+    lat: 29.8,
     labelSide: 'bottom',
+    labelDx: 66,
     facets: {
       nature: {
         highlights: [
@@ -357,8 +328,8 @@ export const locations: RiverLocation[] = [
     id: 'nanjing',
     name: '南京',
     subtitle: '虎踞龙盘的江畔古都',
-    x: 1300,
-    y: 435,
+    lon: 118.8,
+    lat: 32.08,
     labelSide: 'top',
     facets: {
       history: {
@@ -381,9 +352,10 @@ export const locations: RiverLocation[] = [
     id: 'guazhou',
     name: '扬州 · 瓜洲',
     subtitle: '古诗里的渡口，运河与长江的十字路口',
-    x: 1355,
-    y: 415,
+    lon: 119.45,
+    lat: 32.2,
     labelSide: 'top',
+    labelDx: 44,
     facets: {
       history: {
         highlights: [
@@ -401,9 +373,10 @@ export const locations: RiverLocation[] = [
     id: 'jiangnan',
     name: '江南水网 · 苏杭',
     subtitle: '河道如织，人与水温柔相处',
-    x: 1430,
-    y: 445,
+    lon: 120.62,
+    lat: 31.3,
     labelSide: 'bottom',
+    labelDx: -70,
     facets: {
       nature: {
         highlights: [
@@ -432,9 +405,10 @@ export const locations: RiverLocation[] = [
     id: 'shanghai',
     name: '上海 · 长江口',
     subtitle: '通向海洋的最后一站',
-    x: 1530,
-    y: 430,
-    labelSide: 'top',
+    lon: 121.5,
+    lat: 31.4,
+    labelSide: 'bottom',
+    labelDx: 30,
     facets: {
       nature: {
         highlights: [
