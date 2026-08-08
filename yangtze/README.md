@@ -24,3 +24,48 @@ npm run preview  # 预览构建产物
 ```
 
 数据（地点、事件、朝代分段）都在 `src/data/` 下的 TypeScript 模块中，直接编辑即可扩充内容。
+
+## 手机端
+
+窄屏（≤760px）自动切换为竖版滚动布局：
+
+- **脑图视图** → 顺流而下的"旅程"长页：左侧河流脊线，按上游/中游/下游分组的地点卡片，点开即详情。
+- **时间轴视图** → "上下五千年"时间长卷：按朝代分段、粘性时代标题，向下滚动即沿时间前进。
+
+## 部署（不影响机器上其他服务）
+
+网站是纯静态文件，构建产物在 `yangtze/dist/`（`base: './'`，任意子路径可用）。两种互不干扰的方式任选：
+
+**方式 A：挂到现有 nginx 的一个子路径**（只新增一个 location，不动其他站点配置）
+
+```nginx
+# 放进现有 server {} 内即可
+location /yangtze/ {
+    alias /srv/yangtze/;            # dist 内容复制到这里
+    try_files $uri $uri/ /yangtze/index.html;
+}
+```
+
+```bash
+rsync -a yangtze/dist/ /srv/yangtze/
+nginx -t && systemctl reload nginx   # reload 不中断其他服务
+```
+
+**方式 B：独立端口的静态服务**（完全隔离，占一个未用端口）
+
+```bash
+rsync -a yangtze/dist/ /srv/yangtze/
+# systemd 单元 /etc/systemd/system/yangtze.service：
+# [Service]
+# ExecStart=/usr/bin/python3 -m http.server 8391 --directory /srv/yangtze
+# Restart=always
+# [Install]
+# WantedBy=multi-user.target
+systemctl enable --now yangtze
+```
+
+## 数据来源
+
+- 国界/海岸线：[world-atlas](https://www.npmjs.com/package/world-atlas)（Natural Earth 50m，公有领域）
+- 地形底图：[Natural Earth Cross-blended Hypsometric Tints with Shaded Relief and Water](https://www.naturalearthdata.com/downloads/50m-raster-data/50m-cross-blend-hypso/)（公有领域），裁剪长江流域窗口打包为 `src/assets/terrain.jpg`
+- 河流走向、湖泊轮廓：按真实经纬度手工整理（展示精度）

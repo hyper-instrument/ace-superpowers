@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { line, curveCatmullRom, curveCatmullRomClosed } from 'd3-shape'
-import { geoMercator, geoPath } from 'd3-geo'
+import { geoEquirectangular, geoPath } from 'd3-geo'
 import { feature } from 'topojson-client'
 import type { Topology, GeometryCollection } from 'topojson-specification'
 import { select } from 'd3-selection'
 import { zoom, zoomIdentity, type ZoomTransform } from 'd3-zoom'
 import worldData from 'world-atlas/countries-50m.json'
+import terrainUrl from '../assets/terrain.jpg'
 import { locations } from '../data/locations'
 import {
   yangtzeStem,
@@ -13,6 +14,7 @@ import {
   grandCanal,
   lakes,
   basinBounds,
+  terrainExtent,
   STEM_MID_IDX,
   STEM_LOWER_IDX,
   type LonLat,
@@ -21,10 +23,11 @@ import { CATEGORY_COLORS, type ActiveEvent, type ViewMode } from '../App'
 
 // ---- 静态地理计算（模块级，只算一次） ----
 
-const projection = geoMercator().fitExtent(
+// 等距圆柱投影：与地形栅格（plate carrée）逐像素对齐
+const projection = geoEquirectangular().fitExtent(
   [
-    [20, 16],
-    [1580, 984],
+    [0, 0],
+    [1600, 1000],
   ],
   basinBounds as GeoJSON.MultiPoint,
 )
@@ -43,6 +46,9 @@ const NEIGHBORS_PATH = neighborFeatures
   .join(' ')
 
 const project = (p: LonLat): [number, number] => projection(p)!
+
+const terrainTL = project([terrainExtent.lon0, terrainExtent.lat1])
+const terrainBR = project([terrainExtent.lon1, terrainExtent.lat0])
 
 const openLine = line<[number, number]>().curve(curveCatmullRom.alpha(0.7))
 const closedLine = line<[number, number]>().curve(curveCatmullRomClosed.alpha(0.7))
@@ -115,15 +121,26 @@ export function RiverMap({ mode, selectedId, onSelect, activeEvents }: Props) {
       </defs>
 
       <g transform={transform.toString()}>
-        {/* 海洋 */}
+        {/* 海洋底色（平移出界时的补底） */}
         <rect x={-400} y={-300} width={2400} height={1600} fill="var(--sea)" />
-        {/* 周边国家与中国陆地 */}
-        <path d={NEIGHBORS_PATH} fill="var(--land-far)" stroke="var(--border-line)" strokeWidth={1} />
-        <path d={CHINA_PATH} fill="var(--land)" stroke="var(--coast-line)" strokeWidth={1.4} />
+        {/* 地形栅格：Natural Earth 高程分层设色 + 山体阴影 + 水系（公有领域） */}
+        <image
+          href={terrainUrl}
+          x={terrainTL[0]}
+          y={terrainTL[1]}
+          width={terrainBR[0] - terrainTL[0]}
+          height={terrainBR[1] - terrainTL[1]}
+          preserveAspectRatio="none"
+        />
+        {/* 暖色薄纱：让地形与纸张主题融合 */}
+        <rect x={terrainTL[0]} y={terrainTL[1]} width={terrainBR[0] - terrainTL[0]} height={terrainBR[1] - terrainTL[1]} fill="rgba(243, 236, 219, 0.22)" />
+        {/* 中国以外区域罩一层纸色弱化，突出中国境内地形 */}
+        <path d={NEIGHBORS_PATH} fill="rgba(236, 228, 207, 0.55)" stroke="var(--border-line)" strokeWidth={1} />
+        <path d={CHINA_PATH} fill="none" stroke="var(--coast-line)" strokeWidth={1.2} opacity={0.7} />
 
         {/* 湖泊 */}
         {LAKE_PATHS.map((d, i) => (
-          <path key={lakes[i].name} d={d} fill="var(--lake)" stroke="var(--lake-edge)" strokeWidth={1} />
+          <path key={lakes[i].name} d={d} fill="var(--lake)" stroke="var(--lake-edge)" strokeWidth={1} opacity={0.85} />
         ))}
         {/* 支流与运河 */}
         {TRIBUTARY_PATHS.map((d, i) => (
@@ -163,10 +180,10 @@ export function RiverMap({ mode, selectedId, onSelect, activeEvents }: Props) {
         />
 
         {/* 地理注记 */}
-        <text x={100} y={130} fontSize={14} fill="var(--map-note)" letterSpacing={4}>
+        <text x={project([91.5, 35.6])[0]} y={project([91.5, 35.6])[1]} fontSize={14} fill="var(--map-note)" letterSpacing={4}>
           青 藏 高 原
         </text>
-        <text x={1400} y={640} fontSize={14} fill="var(--map-note)" letterSpacing={4}>
+        <text x={project([121.6, 28.2])[0]} y={project([121.6, 28.2])[1]} fontSize={14} fill="var(--map-note)" letterSpacing={4}>
           东 海
         </text>
 

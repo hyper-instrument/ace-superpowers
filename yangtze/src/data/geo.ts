@@ -98,13 +98,20 @@ export const lakes: Array<{ name: string; ring: LonLat[] }> = [
   },
 ]
 
-/** 地图取景范围（长江流域及周边）。用 MultiPoint 而非 Polygon：d3 球面多边形有绕向语义，MultiPoint 无此陷阱 */
+/**
+ * 地图取景范围。经度跨 34.8°、纬度跨 21.75°，与画布 1600x1000 等比，
+ * 等距圆柱投影下恰好铺满、并与地形栅格 terrain.jpg 的裁剪范围逐像素对齐。
+ * 用 MultiPoint 而非 Polygon：d3 球面多边形有绕向语义，MultiPoint 无此陷阱。
+ */
 export const basinBounds = {
   type: 'MultiPoint' as const,
   coordinates: [
-    [89.0, 23.5],
-    [123.8, 23.5],
-    [123.8, 36.8],
-    [89.0, 36.8],
+    [89.0, 19.275],
+    [123.8, 19.275],
+    [123.8, 41.025],
+    [89.0, 41.025],
   ],
 }
+
+/** 地形栅格四角（与 basinBounds 相同范围） */
+export const terrainExtent = { lon0: 89.0, lat0: 19.275, lon1: 123.8, lat1: 41.025 }
